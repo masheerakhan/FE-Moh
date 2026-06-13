@@ -24,6 +24,7 @@ import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 import { Route as AppAiScribeRouteImport } from './routes/_app.ai.scribe'
 import { Route as AppAiReceptionistRouteImport } from './routes/_app.ai.receptionist'
+import { Route as AppAiCopilotRouteImport } from './routes/_app.ai.copilot'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -99,6 +100,11 @@ const AppAiReceptionistRoute = AppAiReceptionistRouteImport.update({
   path: '/ai/receptionist',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAiCopilotRoute = AppAiCopilotRouteImport.update({
+  id: '/ai/copilot',
+  path: '/ai/copilot',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/pharmacy': typeof AppPharmacyRoute
   '/reception': typeof AppReceptionRoute
   '/telemedicine': typeof AppTelemedicineRoute
+  '/ai/copilot': typeof AppAiCopilotRoute
   '/ai/receptionist': typeof AppAiReceptionistRoute
   '/ai/scribe': typeof AppAiScribeRoute
 }
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/reception': typeof AppReceptionRoute
   '/telemedicine': typeof AppTelemedicineRoute
   '/': typeof AppIndexRoute
+  '/ai/copilot': typeof AppAiCopilotRoute
   '/ai/receptionist': typeof AppAiReceptionistRoute
   '/ai/scribe': typeof AppAiScribeRoute
 }
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/_app/reception': typeof AppReceptionRoute
   '/_app/telemedicine': typeof AppTelemedicineRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/ai/copilot': typeof AppAiCopilotRoute
   '/_app/ai/receptionist': typeof AppAiReceptionistRoute
   '/_app/ai/scribe': typeof AppAiScribeRoute
 }
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/pharmacy'
     | '/reception'
     | '/telemedicine'
+    | '/ai/copilot'
     | '/ai/receptionist'
     | '/ai/scribe'
   fileRoutesByTo: FileRoutesByTo
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/reception'
     | '/telemedicine'
     | '/'
+    | '/ai/copilot'
     | '/ai/receptionist'
     | '/ai/scribe'
   id:
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/_app/reception'
     | '/_app/telemedicine'
     | '/_app/'
+    | '/_app/ai/copilot'
     | '/_app/ai/receptionist'
     | '/_app/ai/scribe'
   fileRoutesById: FileRoutesById
@@ -313,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiReceptionistRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/ai/copilot': {
+      id: '/_app/ai/copilot'
+      path: '/ai/copilot'
+      fullPath: '/ai/copilot'
+      preLoaderRoute: typeof AppAiCopilotRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -329,6 +348,7 @@ interface AppRouteChildren {
   AppReceptionRoute: typeof AppReceptionRoute
   AppTelemedicineRoute: typeof AppTelemedicineRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAiCopilotRoute: typeof AppAiCopilotRoute
   AppAiReceptionistRoute: typeof AppAiReceptionistRoute
   AppAiScribeRoute: typeof AppAiScribeRoute
 }
@@ -346,6 +366,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReceptionRoute: AppReceptionRoute,
   AppTelemedicineRoute: AppTelemedicineRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAiCopilotRoute: AppAiCopilotRoute,
   AppAiReceptionistRoute: AppAiReceptionistRoute,
   AppAiScribeRoute: AppAiScribeRoute,
 }
