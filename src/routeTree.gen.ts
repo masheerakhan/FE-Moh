@@ -23,6 +23,7 @@ import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 import { Route as AppAiScribeRouteImport } from './routes/_app.ai.scribe'
+import { Route as AppAiRiskRouteImport } from './routes/_app.ai.risk'
 import { Route as AppAiReportsRouteImport } from './routes/_app.ai.reports'
 import { Route as AppAiReceptionistRouteImport } from './routes/_app.ai.receptionist'
 import { Route as AppAiCopilotRouteImport } from './routes/_app.ai.copilot'
@@ -97,6 +98,11 @@ const AppAiScribeRoute = AppAiScribeRouteImport.update({
   path: '/ai/scribe',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAiRiskRoute = AppAiRiskRouteImport.update({
+  id: '/ai/risk',
+  path: '/ai/risk',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAiReportsRoute = AppAiReportsRouteImport.update({
   id: '/ai/reports',
   path: '/ai/reports',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/ai/copilot': typeof AppAiCopilotRoute
   '/ai/receptionist': typeof AppAiReceptionistRoute
   '/ai/reports': typeof AppAiReportsRoute
+  '/ai/risk': typeof AppAiRiskRoute
   '/ai/scribe': typeof AppAiScribeRoute
 }
 export interface FileRoutesByTo {
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/ai/copilot': typeof AppAiCopilotRoute
   '/ai/receptionist': typeof AppAiReceptionistRoute
   '/ai/reports': typeof AppAiReportsRoute
+  '/ai/risk': typeof AppAiRiskRoute
   '/ai/scribe': typeof AppAiScribeRoute
 }
 export interface FileRoutesById {
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/_app/ai/copilot': typeof AppAiCopilotRoute
   '/_app/ai/receptionist': typeof AppAiReceptionistRoute
   '/_app/ai/reports': typeof AppAiReportsRoute
+  '/_app/ai/risk': typeof AppAiRiskRoute
   '/_app/ai/scribe': typeof AppAiScribeRoute
 }
 export interface FileRouteTypes {
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/ai/copilot'
     | '/ai/receptionist'
     | '/ai/reports'
+    | '/ai/risk'
     | '/ai/scribe'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/ai/copilot'
     | '/ai/receptionist'
     | '/ai/reports'
+    | '/ai/risk'
     | '/ai/scribe'
   id:
     | '__root__'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/_app/ai/copilot'
     | '/_app/ai/receptionist'
     | '/_app/ai/reports'
+    | '/_app/ai/risk'
     | '/_app/ai/scribe'
   fileRoutesById: FileRoutesById
 }
@@ -342,6 +354,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiScribeRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/ai/risk': {
+      id: '/_app/ai/risk'
+      path: '/ai/risk'
+      fullPath: '/ai/risk'
+      preLoaderRoute: typeof AppAiRiskRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/ai/reports': {
       id: '/_app/ai/reports'
       path: '/ai/reports'
@@ -390,6 +409,7 @@ interface AppRouteChildren {
   AppAiCopilotRoute: typeof AppAiCopilotRoute
   AppAiReceptionistRoute: typeof AppAiReceptionistRoute
   AppAiReportsRoute: typeof AppAiReportsRoute
+  AppAiRiskRoute: typeof AppAiRiskRoute
   AppAiScribeRoute: typeof AppAiScribeRoute
 }
 
@@ -410,6 +430,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAiCopilotRoute: AppAiCopilotRoute,
   AppAiReceptionistRoute: AppAiReceptionistRoute,
   AppAiReportsRoute: AppAiReportsRoute,
+  AppAiRiskRoute: AppAiRiskRoute,
   AppAiScribeRoute: AppAiScribeRoute,
 }
 
