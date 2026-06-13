@@ -14,6 +14,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppReceptionRouteImport } from './routes/_app.reception'
 import { Route as AppEmrRouteImport } from './routes/_app.emr'
 import { Route as AppDoctorRouteImport } from './routes/_app.doctor'
+import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 
 const AppRoute = AppRouteImport.update({
@@ -40,6 +41,11 @@ const AppDoctorRoute = AppDoctorRouteImport.update({
   path: '/doctor',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   id: '/appointments',
   path: '/appointments',
@@ -49,12 +55,14 @@ const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/appointments': typeof AppAppointmentsRoute
+  '/billing': typeof AppBillingRoute
   '/doctor': typeof AppDoctorRoute
   '/emr': typeof AppEmrRoute
   '/reception': typeof AppReceptionRoute
 }
 export interface FileRoutesByTo {
   '/appointments': typeof AppAppointmentsRoute
+  '/billing': typeof AppBillingRoute
   '/doctor': typeof AppDoctorRoute
   '/emr': typeof AppEmrRoute
   '/reception': typeof AppReceptionRoute
@@ -64,6 +72,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_app/appointments': typeof AppAppointmentsRoute
+  '/_app/billing': typeof AppBillingRoute
   '/_app/doctor': typeof AppDoctorRoute
   '/_app/emr': typeof AppEmrRoute
   '/_app/reception': typeof AppReceptionRoute
@@ -71,13 +80,20 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/appointments' | '/doctor' | '/emr' | '/reception'
+  fullPaths:
+    | '/'
+    | '/appointments'
+    | '/billing'
+    | '/doctor'
+    | '/emr'
+    | '/reception'
   fileRoutesByTo: FileRoutesByTo
-  to: '/appointments' | '/doctor' | '/emr' | '/reception' | '/'
+  to: '/appointments' | '/billing' | '/doctor' | '/emr' | '/reception' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/_app/appointments'
+    | '/_app/billing'
     | '/_app/doctor'
     | '/_app/emr'
     | '/_app/reception'
@@ -125,6 +141,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDoctorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/billing': {
+      id: '/_app/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/appointments': {
       id: '/_app/appointments'
       path: '/appointments'
@@ -137,6 +160,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppBillingRoute: typeof AppBillingRoute
   AppDoctorRoute: typeof AppDoctorRoute
   AppEmrRoute: typeof AppEmrRoute
   AppReceptionRoute: typeof AppReceptionRoute
@@ -145,6 +169,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
+  AppBillingRoute: AppBillingRoute,
   AppDoctorRoute: AppDoctorRoute,
   AppEmrRoute: AppEmrRoute,
   AppReceptionRoute: AppReceptionRoute,
