@@ -22,6 +22,7 @@ import { Route as AppClinicsRouteImport } from './routes/_app.clinics'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
+import { Route as AppAiReceptionistRouteImport } from './routes/_app.ai.receptionist'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -87,6 +88,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAiReceptionistRoute = AppAiReceptionistRouteImport.update({
+  id: '/ai/receptionist',
+  path: '/ai/receptionist',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/pharmacy': typeof AppPharmacyRoute
   '/reception': typeof AppReceptionRoute
   '/telemedicine': typeof AppTelemedicineRoute
+  '/ai/receptionist': typeof AppAiReceptionistRoute
 }
 export interface FileRoutesByTo {
   '/analytics': typeof AppAnalyticsRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/reception': typeof AppReceptionRoute
   '/telemedicine': typeof AppTelemedicineRoute
   '/': typeof AppIndexRoute
+  '/ai/receptionist': typeof AppAiReceptionistRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/_app/reception': typeof AppReceptionRoute
   '/_app/telemedicine': typeof AppTelemedicineRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/ai/receptionist': typeof AppAiReceptionistRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/pharmacy'
     | '/reception'
     | '/telemedicine'
+    | '/ai/receptionist'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/analytics'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/reception'
     | '/telemedicine'
     | '/'
+    | '/ai/receptionist'
   id:
     | '__root__'
     | '/_app'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/_app/reception'
     | '/_app/telemedicine'
     | '/_app/'
+    | '/_app/ai/receptionist'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -275,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/ai/receptionist': {
+      id: '/_app/ai/receptionist'
+      path: '/ai/receptionist'
+      fullPath: '/ai/receptionist'
+      preLoaderRoute: typeof AppAiReceptionistRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -291,6 +310,7 @@ interface AppRouteChildren {
   AppReceptionRoute: typeof AppReceptionRoute
   AppTelemedicineRoute: typeof AppTelemedicineRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAiReceptionistRoute: typeof AppAiReceptionistRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -306,6 +326,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReceptionRoute: AppReceptionRoute,
   AppTelemedicineRoute: AppTelemedicineRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAiReceptionistRoute: AppAiReceptionistRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
