@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppReceptionRouteImport } from './routes/_app.reception'
+import { Route as AppEmrRouteImport } from './routes/_app.emr'
 import { Route as AppDoctorRouteImport } from './routes/_app.doctor'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 
@@ -29,6 +30,11 @@ const AppReceptionRoute = AppReceptionRouteImport.update({
   path: '/reception',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEmrRoute = AppEmrRouteImport.update({
+  id: '/emr',
+  path: '/emr',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDoctorRoute = AppDoctorRouteImport.update({
   id: '/doctor',
   path: '/doctor',
@@ -44,11 +50,13 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/appointments': typeof AppAppointmentsRoute
   '/doctor': typeof AppDoctorRoute
+  '/emr': typeof AppEmrRoute
   '/reception': typeof AppReceptionRoute
 }
 export interface FileRoutesByTo {
   '/appointments': typeof AppAppointmentsRoute
   '/doctor': typeof AppDoctorRoute
+  '/emr': typeof AppEmrRoute
   '/reception': typeof AppReceptionRoute
   '/': typeof AppIndexRoute
 }
@@ -57,19 +65,21 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/appointments': typeof AppAppointmentsRoute
   '/_app/doctor': typeof AppDoctorRoute
+  '/_app/emr': typeof AppEmrRoute
   '/_app/reception': typeof AppReceptionRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/appointments' | '/doctor' | '/reception'
+  fullPaths: '/' | '/appointments' | '/doctor' | '/emr' | '/reception'
   fileRoutesByTo: FileRoutesByTo
-  to: '/appointments' | '/doctor' | '/reception' | '/'
+  to: '/appointments' | '/doctor' | '/emr' | '/reception' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/_app/appointments'
     | '/_app/doctor'
+    | '/_app/emr'
     | '/_app/reception'
     | '/_app/'
   fileRoutesById: FileRoutesById
@@ -101,6 +111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReceptionRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/emr': {
+      id: '/_app/emr'
+      path: '/emr'
+      fullPath: '/emr'
+      preLoaderRoute: typeof AppEmrRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/doctor': {
       id: '/_app/doctor'
       path: '/doctor'
@@ -121,6 +138,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
   AppDoctorRoute: typeof AppDoctorRoute
+  AppEmrRoute: typeof AppEmrRoute
   AppReceptionRoute: typeof AppReceptionRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -128,6 +146,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
   AppDoctorRoute: AppDoctorRoute,
+  AppEmrRoute: AppEmrRoute,
   AppReceptionRoute: AppReceptionRoute,
   AppIndexRoute: AppIndexRoute,
 }
