@@ -9,61 +9,436 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppTelemedicineRouteImport } from './routes/_app.telemedicine'
+import { Route as AppReceptionRouteImport } from './routes/_app.reception'
+import { Route as AppPharmacyRouteImport } from './routes/_app.pharmacy'
+import { Route as AppPatientRouteImport } from './routes/_app.patient'
+import { Route as AppLabRouteImport } from './routes/_app.lab'
+import { Route as AppEmrRouteImport } from './routes/_app.emr'
+import { Route as AppDoctorRouteImport } from './routes/_app.doctor'
+import { Route as AppClinicsRouteImport } from './routes/_app.clinics'
+import { Route as AppBillingRouteImport } from './routes/_app.billing'
+import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
+import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
+import { Route as AppAiScribeRouteImport } from './routes/_app.ai.scribe'
+import { Route as AppAiRiskRouteImport } from './routes/_app.ai.risk'
+import { Route as AppAiReportsRouteImport } from './routes/_app.ai.reports'
+import { Route as AppAiReceptionistRouteImport } from './routes/_app.ai.receptionist'
+import { Route as AppAiCopilotRouteImport } from './routes/_app.ai.copilot'
+import { Route as AppAiCareRouteImport } from './routes/_app.ai.care'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTelemedicineRoute = AppTelemedicineRouteImport.update({
+  id: '/telemedicine',
+  path: '/telemedicine',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReceptionRoute = AppReceptionRouteImport.update({
+  id: '/reception',
+  path: '/reception',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPharmacyRoute = AppPharmacyRouteImport.update({
+  id: '/pharmacy',
+  path: '/pharmacy',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientRoute = AppPatientRouteImport.update({
+  id: '/patient',
+  path: '/patient',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLabRoute = AppLabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmrRoute = AppEmrRouteImport.update({
+  id: '/emr',
+  path: '/emr',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDoctorRoute = AppDoctorRouteImport.update({
+  id: '/doctor',
+  path: '/doctor',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicsRoute = AppClinicsRouteImport.update({
+  id: '/clinics',
+  path: '/clinics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiScribeRoute = AppAiScribeRouteImport.update({
+  id: '/ai/scribe',
+  path: '/ai/scribe',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiRiskRoute = AppAiRiskRouteImport.update({
+  id: '/ai/risk',
+  path: '/ai/risk',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiReportsRoute = AppAiReportsRouteImport.update({
+  id: '/ai/reports',
+  path: '/ai/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiReceptionistRoute = AppAiReceptionistRouteImport.update({
+  id: '/ai/receptionist',
+  path: '/ai/receptionist',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiCopilotRoute = AppAiCopilotRouteImport.update({
+  id: '/ai/copilot',
+  path: '/ai/copilot',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiCareRoute = AppAiCareRouteImport.update({
+  id: '/ai/care',
+  path: '/ai/care',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/analytics': typeof AppAnalyticsRoute
+  '/appointments': typeof AppAppointmentsRoute
+  '/billing': typeof AppBillingRoute
+  '/clinics': typeof AppClinicsRoute
+  '/doctor': typeof AppDoctorRoute
+  '/emr': typeof AppEmrRoute
+  '/lab': typeof AppLabRoute
+  '/patient': typeof AppPatientRoute
+  '/pharmacy': typeof AppPharmacyRoute
+  '/reception': typeof AppReceptionRoute
+  '/telemedicine': typeof AppTelemedicineRoute
+  '/ai/care': typeof AppAiCareRoute
+  '/ai/copilot': typeof AppAiCopilotRoute
+  '/ai/receptionist': typeof AppAiReceptionistRoute
+  '/ai/reports': typeof AppAiReportsRoute
+  '/ai/risk': typeof AppAiRiskRoute
+  '/ai/scribe': typeof AppAiScribeRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/analytics': typeof AppAnalyticsRoute
+  '/appointments': typeof AppAppointmentsRoute
+  '/billing': typeof AppBillingRoute
+  '/clinics': typeof AppClinicsRoute
+  '/doctor': typeof AppDoctorRoute
+  '/emr': typeof AppEmrRoute
+  '/lab': typeof AppLabRoute
+  '/patient': typeof AppPatientRoute
+  '/pharmacy': typeof AppPharmacyRoute
+  '/reception': typeof AppReceptionRoute
+  '/telemedicine': typeof AppTelemedicineRoute
+  '/': typeof AppIndexRoute
+  '/ai/care': typeof AppAiCareRoute
+  '/ai/copilot': typeof AppAiCopilotRoute
+  '/ai/receptionist': typeof AppAiReceptionistRoute
+  '/ai/reports': typeof AppAiReportsRoute
+  '/ai/risk': typeof AppAiRiskRoute
+  '/ai/scribe': typeof AppAiScribeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/analytics': typeof AppAnalyticsRoute
+  '/_app/appointments': typeof AppAppointmentsRoute
+  '/_app/billing': typeof AppBillingRoute
+  '/_app/clinics': typeof AppClinicsRoute
+  '/_app/doctor': typeof AppDoctorRoute
+  '/_app/emr': typeof AppEmrRoute
+  '/_app/lab': typeof AppLabRoute
+  '/_app/patient': typeof AppPatientRoute
+  '/_app/pharmacy': typeof AppPharmacyRoute
+  '/_app/reception': typeof AppReceptionRoute
+  '/_app/telemedicine': typeof AppTelemedicineRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/ai/care': typeof AppAiCareRoute
+  '/_app/ai/copilot': typeof AppAiCopilotRoute
+  '/_app/ai/receptionist': typeof AppAiReceptionistRoute
+  '/_app/ai/reports': typeof AppAiReportsRoute
+  '/_app/ai/risk': typeof AppAiRiskRoute
+  '/_app/ai/scribe': typeof AppAiScribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/analytics'
+    | '/appointments'
+    | '/billing'
+    | '/clinics'
+    | '/doctor'
+    | '/emr'
+    | '/lab'
+    | '/patient'
+    | '/pharmacy'
+    | '/reception'
+    | '/telemedicine'
+    | '/ai/care'
+    | '/ai/copilot'
+    | '/ai/receptionist'
+    | '/ai/reports'
+    | '/ai/risk'
+    | '/ai/scribe'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/analytics'
+    | '/appointments'
+    | '/billing'
+    | '/clinics'
+    | '/doctor'
+    | '/emr'
+    | '/lab'
+    | '/patient'
+    | '/pharmacy'
+    | '/reception'
+    | '/telemedicine'
+    | '/'
+    | '/ai/care'
+    | '/ai/copilot'
+    | '/ai/receptionist'
+    | '/ai/reports'
+    | '/ai/risk'
+    | '/ai/scribe'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_app/analytics'
+    | '/_app/appointments'
+    | '/_app/billing'
+    | '/_app/clinics'
+    | '/_app/doctor'
+    | '/_app/emr'
+    | '/_app/lab'
+    | '/_app/patient'
+    | '/_app/pharmacy'
+    | '/_app/reception'
+    | '/_app/telemedicine'
+    | '/_app/'
+    | '/_app/ai/care'
+    | '/_app/ai/copilot'
+    | '/_app/ai/receptionist'
+    | '/_app/ai/reports'
+    | '/_app/ai/risk'
+    | '/_app/ai/scribe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/telemedicine': {
+      id: '/_app/telemedicine'
+      path: '/telemedicine'
+      fullPath: '/telemedicine'
+      preLoaderRoute: typeof AppTelemedicineRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reception': {
+      id: '/_app/reception'
+      path: '/reception'
+      fullPath: '/reception'
+      preLoaderRoute: typeof AppReceptionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pharmacy': {
+      id: '/_app/pharmacy'
+      path: '/pharmacy'
+      fullPath: '/pharmacy'
+      preLoaderRoute: typeof AppPharmacyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/patient': {
+      id: '/_app/patient'
+      path: '/patient'
+      fullPath: '/patient'
+      preLoaderRoute: typeof AppPatientRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lab': {
+      id: '/_app/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof AppLabRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/emr': {
+      id: '/_app/emr'
+      path: '/emr'
+      fullPath: '/emr'
+      preLoaderRoute: typeof AppEmrRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/doctor': {
+      id: '/_app/doctor'
+      path: '/doctor'
+      fullPath: '/doctor'
+      preLoaderRoute: typeof AppDoctorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clinics': {
+      id: '/_app/clinics'
+      path: '/clinics'
+      fullPath: '/clinics'
+      preLoaderRoute: typeof AppClinicsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/billing': {
+      id: '/_app/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/appointments': {
+      id: '/_app/appointments'
+      path: '/appointments'
+      fullPath: '/appointments'
+      preLoaderRoute: typeof AppAppointmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/analytics': {
+      id: '/_app/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai/scribe': {
+      id: '/_app/ai/scribe'
+      path: '/ai/scribe'
+      fullPath: '/ai/scribe'
+      preLoaderRoute: typeof AppAiScribeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai/risk': {
+      id: '/_app/ai/risk'
+      path: '/ai/risk'
+      fullPath: '/ai/risk'
+      preLoaderRoute: typeof AppAiRiskRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai/reports': {
+      id: '/_app/ai/reports'
+      path: '/ai/reports'
+      fullPath: '/ai/reports'
+      preLoaderRoute: typeof AppAiReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai/receptionist': {
+      id: '/_app/ai/receptionist'
+      path: '/ai/receptionist'
+      fullPath: '/ai/receptionist'
+      preLoaderRoute: typeof AppAiReceptionistRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai/copilot': {
+      id: '/_app/ai/copilot'
+      path: '/ai/copilot'
+      fullPath: '/ai/copilot'
+      preLoaderRoute: typeof AppAiCopilotRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai/care': {
+      id: '/_app/ai/care'
+      path: '/ai/care'
+      fullPath: '/ai/care'
+      preLoaderRoute: typeof AppAiCareRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppBillingRoute: typeof AppBillingRoute
+  AppClinicsRoute: typeof AppClinicsRoute
+  AppDoctorRoute: typeof AppDoctorRoute
+  AppEmrRoute: typeof AppEmrRoute
+  AppLabRoute: typeof AppLabRoute
+  AppPatientRoute: typeof AppPatientRoute
+  AppPharmacyRoute: typeof AppPharmacyRoute
+  AppReceptionRoute: typeof AppReceptionRoute
+  AppTelemedicineRoute: typeof AppTelemedicineRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppAiCareRoute: typeof AppAiCareRoute
+  AppAiCopilotRoute: typeof AppAiCopilotRoute
+  AppAiReceptionistRoute: typeof AppAiReceptionistRoute
+  AppAiReportsRoute: typeof AppAiReportsRoute
+  AppAiRiskRoute: typeof AppAiRiskRoute
+  AppAiScribeRoute: typeof AppAiScribeRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAnalyticsRoute: AppAnalyticsRoute,
+  AppAppointmentsRoute: AppAppointmentsRoute,
+  AppBillingRoute: AppBillingRoute,
+  AppClinicsRoute: AppClinicsRoute,
+  AppDoctorRoute: AppDoctorRoute,
+  AppEmrRoute: AppEmrRoute,
+  AppLabRoute: AppLabRoute,
+  AppPatientRoute: AppPatientRoute,
+  AppPharmacyRoute: AppPharmacyRoute,
+  AppReceptionRoute: AppReceptionRoute,
+  AppTelemedicineRoute: AppTelemedicineRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppAiCareRoute: AppAiCareRoute,
+  AppAiCopilotRoute: AppAiCopilotRoute,
+  AppAiReceptionistRoute: AppAiReceptionistRoute,
+  AppAiReportsRoute: AppAiReportsRoute,
+  AppAiRiskRoute: AppAiRiskRoute,
+  AppAiScribeRoute: AppAiScribeRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
