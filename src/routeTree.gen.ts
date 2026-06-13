@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppReceptionRouteImport } from './routes/_app.reception'
 import { Route as AppDoctorRouteImport } from './routes/_app.doctor'
 
 const AppRoute = AppRouteImport.update({
@@ -22,6 +23,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReceptionRoute = AppReceptionRouteImport.update({
+  id: '/reception',
+  path: '/reception',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDoctorRoute = AppDoctorRouteImport.update({
   id: '/doctor',
   path: '/doctor',
@@ -31,23 +37,26 @@ const AppDoctorRoute = AppDoctorRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/doctor': typeof AppDoctorRoute
+  '/reception': typeof AppReceptionRoute
 }
 export interface FileRoutesByTo {
   '/doctor': typeof AppDoctorRoute
+  '/reception': typeof AppReceptionRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_app/doctor': typeof AppDoctorRoute
+  '/_app/reception': typeof AppReceptionRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/doctor'
+  fullPaths: '/' | '/doctor' | '/reception'
   fileRoutesByTo: FileRoutesByTo
-  to: '/doctor' | '/'
-  id: '__root__' | '/_app' | '/_app/doctor' | '/_app/'
+  to: '/doctor' | '/reception' | '/'
+  id: '__root__' | '/_app' | '/_app/doctor' | '/_app/reception' | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -70,6 +79,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/reception': {
+      id: '/_app/reception'
+      path: '/reception'
+      fullPath: '/reception'
+      preLoaderRoute: typeof AppReceptionRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/doctor': {
       id: '/_app/doctor'
       path: '/doctor'
@@ -82,11 +98,13 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppDoctorRoute: typeof AppDoctorRoute
+  AppReceptionRoute: typeof AppReceptionRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppDoctorRoute: AppDoctorRoute,
+  AppReceptionRoute: AppReceptionRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
@@ -98,3 +116,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
