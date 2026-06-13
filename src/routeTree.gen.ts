@@ -17,6 +17,7 @@ import { Route as AppPharmacyRouteImport } from './routes/_app.pharmacy'
 import { Route as AppLabRouteImport } from './routes/_app.lab'
 import { Route as AppEmrRouteImport } from './routes/_app.emr'
 import { Route as AppDoctorRouteImport } from './routes/_app.doctor'
+import { Route as AppClinicsRouteImport } from './routes/_app.clinics'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 
@@ -59,6 +60,11 @@ const AppDoctorRoute = AppDoctorRouteImport.update({
   path: '/doctor',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClinicsRoute = AppClinicsRouteImport.update({
+  id: '/clinics',
+  path: '/clinics',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBillingRoute = AppBillingRouteImport.update({
   id: '/billing',
   path: '/billing',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/appointments': typeof AppAppointmentsRoute
   '/billing': typeof AppBillingRoute
+  '/clinics': typeof AppClinicsRoute
   '/doctor': typeof AppDoctorRoute
   '/emr': typeof AppEmrRoute
   '/lab': typeof AppLabRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/appointments': typeof AppAppointmentsRoute
   '/billing': typeof AppBillingRoute
+  '/clinics': typeof AppClinicsRoute
   '/doctor': typeof AppDoctorRoute
   '/emr': typeof AppEmrRoute
   '/lab': typeof AppLabRoute
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/appointments': typeof AppAppointmentsRoute
   '/_app/billing': typeof AppBillingRoute
+  '/_app/clinics': typeof AppClinicsRoute
   '/_app/doctor': typeof AppDoctorRoute
   '/_app/emr': typeof AppEmrRoute
   '/_app/lab': typeof AppLabRoute
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/'
     | '/appointments'
     | '/billing'
+    | '/clinics'
     | '/doctor'
     | '/emr'
     | '/lab'
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
   to:
     | '/appointments'
     | '/billing'
+    | '/clinics'
     | '/doctor'
     | '/emr'
     | '/lab'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_app/appointments'
     | '/_app/billing'
+    | '/_app/clinics'
     | '/_app/doctor'
     | '/_app/emr'
     | '/_app/lab'
@@ -204,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDoctorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/clinics': {
+      id: '/_app/clinics'
+      path: '/clinics'
+      fullPath: '/clinics'
+      preLoaderRoute: typeof AppClinicsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/billing': {
       id: '/_app/billing'
       path: '/billing'
@@ -224,6 +243,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
   AppBillingRoute: typeof AppBillingRoute
+  AppClinicsRoute: typeof AppClinicsRoute
   AppDoctorRoute: typeof AppDoctorRoute
   AppEmrRoute: typeof AppEmrRoute
   AppLabRoute: typeof AppLabRoute
@@ -236,6 +256,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
   AppBillingRoute: AppBillingRoute,
+  AppClinicsRoute: AppClinicsRoute,
   AppDoctorRoute: AppDoctorRoute,
   AppEmrRoute: AppEmrRoute,
   AppLabRoute: AppLabRoute,
