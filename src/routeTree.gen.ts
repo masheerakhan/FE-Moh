@@ -14,6 +14,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppTelemedicineRouteImport } from './routes/_app.telemedicine'
 import { Route as AppReceptionRouteImport } from './routes/_app.reception'
 import { Route as AppPharmacyRouteImport } from './routes/_app.pharmacy'
+import { Route as AppPatientRouteImport } from './routes/_app.patient'
 import { Route as AppLabRouteImport } from './routes/_app.lab'
 import { Route as AppEmrRouteImport } from './routes/_app.emr'
 import { Route as AppDoctorRouteImport } from './routes/_app.doctor'
@@ -44,6 +45,11 @@ const AppReceptionRoute = AppReceptionRouteImport.update({
 const AppPharmacyRoute = AppPharmacyRouteImport.update({
   id: '/pharmacy',
   path: '/pharmacy',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientRoute = AppPatientRouteImport.update({
+  id: '/patient',
+  path: '/patient',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLabRoute = AppLabRouteImport.update({
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/doctor': typeof AppDoctorRoute
   '/emr': typeof AppEmrRoute
   '/lab': typeof AppLabRoute
+  '/patient': typeof AppPatientRoute
   '/pharmacy': typeof AppPharmacyRoute
   '/reception': typeof AppReceptionRoute
   '/telemedicine': typeof AppTelemedicineRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/doctor': typeof AppDoctorRoute
   '/emr': typeof AppEmrRoute
   '/lab': typeof AppLabRoute
+  '/patient': typeof AppPatientRoute
   '/pharmacy': typeof AppPharmacyRoute
   '/reception': typeof AppReceptionRoute
   '/telemedicine': typeof AppTelemedicineRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_app/doctor': typeof AppDoctorRoute
   '/_app/emr': typeof AppEmrRoute
   '/_app/lab': typeof AppLabRoute
+  '/_app/patient': typeof AppPatientRoute
   '/_app/pharmacy': typeof AppPharmacyRoute
   '/_app/reception': typeof AppReceptionRoute
   '/_app/telemedicine': typeof AppTelemedicineRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/doctor'
     | '/emr'
     | '/lab'
+    | '/patient'
     | '/pharmacy'
     | '/reception'
     | '/telemedicine'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/doctor'
     | '/emr'
     | '/lab'
+    | '/patient'
     | '/pharmacy'
     | '/reception'
     | '/telemedicine'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_app/doctor'
     | '/_app/emr'
     | '/_app/lab'
+    | '/_app/patient'
     | '/_app/pharmacy'
     | '/_app/reception'
     | '/_app/telemedicine'
@@ -205,6 +217,13 @@ declare module '@tanstack/react-router' {
       path: '/pharmacy'
       fullPath: '/pharmacy'
       preLoaderRoute: typeof AppPharmacyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/patient': {
+      id: '/_app/patient'
+      path: '/patient'
+      fullPath: '/patient'
+      preLoaderRoute: typeof AppPatientRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/lab': {
@@ -267,6 +286,7 @@ interface AppRouteChildren {
   AppDoctorRoute: typeof AppDoctorRoute
   AppEmrRoute: typeof AppEmrRoute
   AppLabRoute: typeof AppLabRoute
+  AppPatientRoute: typeof AppPatientRoute
   AppPharmacyRoute: typeof AppPharmacyRoute
   AppReceptionRoute: typeof AppReceptionRoute
   AppTelemedicineRoute: typeof AppTelemedicineRoute
@@ -281,6 +301,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDoctorRoute: AppDoctorRoute,
   AppEmrRoute: AppEmrRoute,
   AppLabRoute: AppLabRoute,
+  AppPatientRoute: AppPatientRoute,
   AppPharmacyRoute: AppPharmacyRoute,
   AppReceptionRoute: AppReceptionRoute,
   AppTelemedicineRoute: AppTelemedicineRoute,
