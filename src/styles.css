@@ -61,6 +61,13 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@theme inline {
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-primary-glow: var(--primary-glow);
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(0.99 0.005 200);
