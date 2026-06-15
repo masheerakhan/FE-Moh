@@ -3,6 +3,7 @@ import {
   Activity, Bell, Search, Stethoscope, Users, Calendar, FileText, Receipt,
   Pill, FlaskConical, Video, Bot, Mic, Brain, HeartPulse, BarChart3,
   Building2, ShieldCheck, LayoutDashboard, UserRound, Sparkles,
+  Palette, CreditCard, KeyRound, Crown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,14 @@ const nav = [
   ]},
   { group: "Patient", items: [
     { to: "/patient", label: "Patient App", icon: UserRound },
+  ]},
+  { group: "Enterprise", items: [
+    { to: "/admin/super", label: "Super Admin", icon: Crown },
+    { to: "/admin/org", label: "Organization Admin", icon: Building2 },
+    { to: "/admin/clinic", label: "Clinic Admin", icon: LayoutDashboard },
+    { to: "/whitelabel", label: "White Label", icon: Palette },
+    { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
+    { to: "/rbac", label: "Advanced RBAC", icon: KeyRound },
   ]},
   { group: "AI Layer", items: [
     { to: "/ai/receptionist", label: "AI Receptionist", icon: Bot },

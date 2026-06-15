@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppWhitelabelRouteImport } from './routes/_app.whitelabel'
 import { Route as AppTelemedicineRouteImport } from './routes/_app.telemedicine'
+import { Route as AppSubscriptionsRouteImport } from './routes/_app.subscriptions'
 import { Route as AppReceptionRouteImport } from './routes/_app.reception'
+import { Route as AppRbacRouteImport } from './routes/_app.rbac'
 import { Route as AppPharmacyRouteImport } from './routes/_app.pharmacy'
 import { Route as AppPatientRouteImport } from './routes/_app.patient'
 import { Route as AppLabRouteImport } from './routes/_app.lab'
@@ -28,6 +31,9 @@ import { Route as AppAiReportsRouteImport } from './routes/_app.ai.reports'
 import { Route as AppAiReceptionistRouteImport } from './routes/_app.ai.receptionist'
 import { Route as AppAiCopilotRouteImport } from './routes/_app.ai.copilot'
 import { Route as AppAiCareRouteImport } from './routes/_app.ai.care'
+import { Route as AppAdminSuperRouteImport } from './routes/_app.admin.super'
+import { Route as AppAdminOrgRouteImport } from './routes/_app.admin.org'
+import { Route as AppAdminClinicRouteImport } from './routes/_app.admin.clinic'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -38,14 +44,29 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWhitelabelRoute = AppWhitelabelRouteImport.update({
+  id: '/whitelabel',
+  path: '/whitelabel',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTelemedicineRoute = AppTelemedicineRouteImport.update({
   id: '/telemedicine',
   path: '/telemedicine',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSubscriptionsRoute = AppSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReceptionRoute = AppReceptionRouteImport.update({
   id: '/reception',
   path: '/reception',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRbacRoute = AppRbacRouteImport.update({
+  id: '/rbac',
+  path: '/rbac',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPharmacyRoute = AppPharmacyRouteImport.update({
@@ -123,6 +144,21 @@ const AppAiCareRoute = AppAiCareRouteImport.update({
   path: '/ai/care',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminSuperRoute = AppAdminSuperRouteImport.update({
+  id: '/admin/super',
+  path: '/admin/super',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminOrgRoute = AppAdminOrgRouteImport.update({
+  id: '/admin/org',
+  path: '/admin/org',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminClinicRoute = AppAdminClinicRouteImport.update({
+  id: '/admin/clinic',
+  path: '/admin/clinic',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -135,8 +171,14 @@ export interface FileRoutesByFullPath {
   '/lab': typeof AppLabRoute
   '/patient': typeof AppPatientRoute
   '/pharmacy': typeof AppPharmacyRoute
+  '/rbac': typeof AppRbacRoute
   '/reception': typeof AppReceptionRoute
+  '/subscriptions': typeof AppSubscriptionsRoute
   '/telemedicine': typeof AppTelemedicineRoute
+  '/whitelabel': typeof AppWhitelabelRoute
+  '/admin/clinic': typeof AppAdminClinicRoute
+  '/admin/org': typeof AppAdminOrgRoute
+  '/admin/super': typeof AppAdminSuperRoute
   '/ai/care': typeof AppAiCareRoute
   '/ai/copilot': typeof AppAiCopilotRoute
   '/ai/receptionist': typeof AppAiReceptionistRoute
@@ -154,9 +196,15 @@ export interface FileRoutesByTo {
   '/lab': typeof AppLabRoute
   '/patient': typeof AppPatientRoute
   '/pharmacy': typeof AppPharmacyRoute
+  '/rbac': typeof AppRbacRoute
   '/reception': typeof AppReceptionRoute
+  '/subscriptions': typeof AppSubscriptionsRoute
   '/telemedicine': typeof AppTelemedicineRoute
+  '/whitelabel': typeof AppWhitelabelRoute
   '/': typeof AppIndexRoute
+  '/admin/clinic': typeof AppAdminClinicRoute
+  '/admin/org': typeof AppAdminOrgRoute
+  '/admin/super': typeof AppAdminSuperRoute
   '/ai/care': typeof AppAiCareRoute
   '/ai/copilot': typeof AppAiCopilotRoute
   '/ai/receptionist': typeof AppAiReceptionistRoute
@@ -176,9 +224,15 @@ export interface FileRoutesById {
   '/_app/lab': typeof AppLabRoute
   '/_app/patient': typeof AppPatientRoute
   '/_app/pharmacy': typeof AppPharmacyRoute
+  '/_app/rbac': typeof AppRbacRoute
   '/_app/reception': typeof AppReceptionRoute
+  '/_app/subscriptions': typeof AppSubscriptionsRoute
   '/_app/telemedicine': typeof AppTelemedicineRoute
+  '/_app/whitelabel': typeof AppWhitelabelRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/admin/clinic': typeof AppAdminClinicRoute
+  '/_app/admin/org': typeof AppAdminOrgRoute
+  '/_app/admin/super': typeof AppAdminSuperRoute
   '/_app/ai/care': typeof AppAiCareRoute
   '/_app/ai/copilot': typeof AppAiCopilotRoute
   '/_app/ai/receptionist': typeof AppAiReceptionistRoute
@@ -199,8 +253,14 @@ export interface FileRouteTypes {
     | '/lab'
     | '/patient'
     | '/pharmacy'
+    | '/rbac'
     | '/reception'
+    | '/subscriptions'
     | '/telemedicine'
+    | '/whitelabel'
+    | '/admin/clinic'
+    | '/admin/org'
+    | '/admin/super'
     | '/ai/care'
     | '/ai/copilot'
     | '/ai/receptionist'
@@ -218,9 +278,15 @@ export interface FileRouteTypes {
     | '/lab'
     | '/patient'
     | '/pharmacy'
+    | '/rbac'
     | '/reception'
+    | '/subscriptions'
     | '/telemedicine'
+    | '/whitelabel'
     | '/'
+    | '/admin/clinic'
+    | '/admin/org'
+    | '/admin/super'
     | '/ai/care'
     | '/ai/copilot'
     | '/ai/receptionist'
@@ -239,9 +305,15 @@ export interface FileRouteTypes {
     | '/_app/lab'
     | '/_app/patient'
     | '/_app/pharmacy'
+    | '/_app/rbac'
     | '/_app/reception'
+    | '/_app/subscriptions'
     | '/_app/telemedicine'
+    | '/_app/whitelabel'
     | '/_app/'
+    | '/_app/admin/clinic'
+    | '/_app/admin/org'
+    | '/_app/admin/super'
     | '/_app/ai/care'
     | '/_app/ai/copilot'
     | '/_app/ai/receptionist'
@@ -270,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/whitelabel': {
+      id: '/_app/whitelabel'
+      path: '/whitelabel'
+      fullPath: '/whitelabel'
+      preLoaderRoute: typeof AppWhitelabelRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/telemedicine': {
       id: '/_app/telemedicine'
       path: '/telemedicine'
@@ -277,11 +356,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTelemedicineRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/subscriptions': {
+      id: '/_app/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/subscriptions'
+      preLoaderRoute: typeof AppSubscriptionsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/reception': {
       id: '/_app/reception'
       path: '/reception'
       fullPath: '/reception'
       preLoaderRoute: typeof AppReceptionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/rbac': {
+      id: '/_app/rbac'
+      path: '/rbac'
+      fullPath: '/rbac'
+      preLoaderRoute: typeof AppRbacRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pharmacy': {
@@ -389,6 +482,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiCareRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/super': {
+      id: '/_app/admin/super'
+      path: '/admin/super'
+      fullPath: '/admin/super'
+      preLoaderRoute: typeof AppAdminSuperRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/org': {
+      id: '/_app/admin/org'
+      path: '/admin/org'
+      fullPath: '/admin/org'
+      preLoaderRoute: typeof AppAdminOrgRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/clinic': {
+      id: '/_app/admin/clinic'
+      path: '/admin/clinic'
+      fullPath: '/admin/clinic'
+      preLoaderRoute: typeof AppAdminClinicRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -402,9 +516,15 @@ interface AppRouteChildren {
   AppLabRoute: typeof AppLabRoute
   AppPatientRoute: typeof AppPatientRoute
   AppPharmacyRoute: typeof AppPharmacyRoute
+  AppRbacRoute: typeof AppRbacRoute
   AppReceptionRoute: typeof AppReceptionRoute
+  AppSubscriptionsRoute: typeof AppSubscriptionsRoute
   AppTelemedicineRoute: typeof AppTelemedicineRoute
+  AppWhitelabelRoute: typeof AppWhitelabelRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAdminClinicRoute: typeof AppAdminClinicRoute
+  AppAdminOrgRoute: typeof AppAdminOrgRoute
+  AppAdminSuperRoute: typeof AppAdminSuperRoute
   AppAiCareRoute: typeof AppAiCareRoute
   AppAiCopilotRoute: typeof AppAiCopilotRoute
   AppAiReceptionistRoute: typeof AppAiReceptionistRoute
@@ -423,9 +543,15 @@ const AppRouteChildren: AppRouteChildren = {
   AppLabRoute: AppLabRoute,
   AppPatientRoute: AppPatientRoute,
   AppPharmacyRoute: AppPharmacyRoute,
+  AppRbacRoute: AppRbacRoute,
   AppReceptionRoute: AppReceptionRoute,
+  AppSubscriptionsRoute: AppSubscriptionsRoute,
   AppTelemedicineRoute: AppTelemedicineRoute,
+  AppWhitelabelRoute: AppWhitelabelRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAdminClinicRoute: AppAdminClinicRoute,
+  AppAdminOrgRoute: AppAdminOrgRoute,
+  AppAdminSuperRoute: AppAdminSuperRoute,
   AppAiCareRoute: AppAiCareRoute,
   AppAiCopilotRoute: AppAiCopilotRoute,
   AppAiReceptionistRoute: AppAiReceptionistRoute,
@@ -442,13 +568,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
