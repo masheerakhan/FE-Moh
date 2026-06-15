@@ -4,6 +4,7 @@ import {
   Pill, FlaskConical, Video, Bot, Mic, Brain, HeartPulse, BarChart3,
   Building2, ShieldCheck, LayoutDashboard, UserRound, Sparkles,
   Palette, CreditCard, KeyRound, Crown,
+  Flag,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const nav = [
     { to: "/admin/super", label: "Super Admin", icon: Crown },
     { to: "/admin/org", label: "Organization Admin", icon: Building2 },
     { to: "/admin/clinic", label: "Clinic Admin", icon: LayoutDashboard },
+    { to: "/admin/features", label: "Feature Toggles", icon: Flag },
     { to: "/whitelabel", label: "White Label", icon: Palette },
     { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { to: "/rbac", label: "Advanced RBAC", icon: KeyRound },
