@@ -33,6 +33,7 @@ import { Route as AppAiCopilotRouteImport } from './routes/_app.ai.copilot'
 import { Route as AppAiCareRouteImport } from './routes/_app.ai.care'
 import { Route as AppAdminSuperRouteImport } from './routes/_app.admin.super'
 import { Route as AppAdminOrgRouteImport } from './routes/_app.admin.org'
+import { Route as AppAdminFeaturesRouteImport } from './routes/_app.admin.features'
 import { Route as AppAdminClinicRouteImport } from './routes/_app.admin.clinic'
 
 const AppRoute = AppRouteImport.update({
@@ -154,6 +155,11 @@ const AppAdminOrgRoute = AppAdminOrgRouteImport.update({
   path: '/admin/org',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminFeaturesRoute = AppAdminFeaturesRouteImport.update({
+  id: '/admin/features',
+  path: '/admin/features',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminClinicRoute = AppAdminClinicRouteImport.update({
   id: '/admin/clinic',
   path: '/admin/clinic',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/telemedicine': typeof AppTelemedicineRoute
   '/whitelabel': typeof AppWhitelabelRoute
   '/admin/clinic': typeof AppAdminClinicRoute
+  '/admin/features': typeof AppAdminFeaturesRoute
   '/admin/org': typeof AppAdminOrgRoute
   '/admin/super': typeof AppAdminSuperRoute
   '/ai/care': typeof AppAiCareRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/whitelabel': typeof AppWhitelabelRoute
   '/': typeof AppIndexRoute
   '/admin/clinic': typeof AppAdminClinicRoute
+  '/admin/features': typeof AppAdminFeaturesRoute
   '/admin/org': typeof AppAdminOrgRoute
   '/admin/super': typeof AppAdminSuperRoute
   '/ai/care': typeof AppAiCareRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/_app/whitelabel': typeof AppWhitelabelRoute
   '/_app/': typeof AppIndexRoute
   '/_app/admin/clinic': typeof AppAdminClinicRoute
+  '/_app/admin/features': typeof AppAdminFeaturesRoute
   '/_app/admin/org': typeof AppAdminOrgRoute
   '/_app/admin/super': typeof AppAdminSuperRoute
   '/_app/ai/care': typeof AppAiCareRoute
@@ -259,6 +268,7 @@ export interface FileRouteTypes {
     | '/telemedicine'
     | '/whitelabel'
     | '/admin/clinic'
+    | '/admin/features'
     | '/admin/org'
     | '/admin/super'
     | '/ai/care'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/whitelabel'
     | '/'
     | '/admin/clinic'
+    | '/admin/features'
     | '/admin/org'
     | '/admin/super'
     | '/ai/care'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/_app/whitelabel'
     | '/_app/'
     | '/_app/admin/clinic'
+    | '/_app/admin/features'
     | '/_app/admin/org'
     | '/_app/admin/super'
     | '/_app/ai/care'
@@ -496,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminOrgRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/features': {
+      id: '/_app/admin/features'
+      path: '/admin/features'
+      fullPath: '/admin/features'
+      preLoaderRoute: typeof AppAdminFeaturesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/clinic': {
       id: '/_app/admin/clinic'
       path: '/admin/clinic'
@@ -523,6 +542,7 @@ interface AppRouteChildren {
   AppWhitelabelRoute: typeof AppWhitelabelRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAdminClinicRoute: typeof AppAdminClinicRoute
+  AppAdminFeaturesRoute: typeof AppAdminFeaturesRoute
   AppAdminOrgRoute: typeof AppAdminOrgRoute
   AppAdminSuperRoute: typeof AppAdminSuperRoute
   AppAiCareRoute: typeof AppAiCareRoute
@@ -550,6 +570,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWhitelabelRoute: AppWhitelabelRoute,
   AppIndexRoute: AppIndexRoute,
   AppAdminClinicRoute: AppAdminClinicRoute,
+  AppAdminFeaturesRoute: AppAdminFeaturesRoute,
   AppAdminOrgRoute: AppAdminOrgRoute,
   AppAdminSuperRoute: AppAdminSuperRoute,
   AppAiCareRoute: AppAiCareRoute,
