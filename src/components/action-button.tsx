@@ -85,15 +85,17 @@ export function ActionButton({
           <div className="space-y-3">
             {fields.map((f) => (
               <div key={f.name} className="space-y-1.5">
-                <Label>{f.label}</Label>
+                <Label htmlFor={`action-field-${f.name}`}>{f.label}</Label>
                 {f.type === "textarea" ? (
                   <Textarea
+                    id={`action-field-${f.name}`}
                     placeholder={f.placeholder}
                     value={values[f.name] ?? ""}
                     onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
                   />
                 ) : (
                   <Input
+                    id={`action-field-${f.name}`}
                     type={f.type ?? "text"}
                     placeholder={f.placeholder}
                     value={values[f.name] ?? ""}
