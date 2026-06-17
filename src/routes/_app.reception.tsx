@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { queue } from "@/lib/mock-data";
 import { UserPlus, Phone, CreditCard, Trash2 } from "lucide-react";
+import { ActionButton } from "@/components/action-button";
 import { useCollection } from "@/lib/use-collection";
 
 type QueueItem = { id: string; token: string; patient: string; doctor: string; wait: string; status: string };
@@ -43,7 +44,31 @@ function Reception() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <PageHeader title="Reception Desk" subtitle="Walk-ins, queue, billing, check-in and check-out — Apollo Bandra"
-        actions={<><Button variant="outline" size="sm"><Phone className="size-4 mr-1" /> AI Receptionist</Button><Button size="sm"><UserPlus className="size-4 mr-1" /> Register Patient</Button></>} />
+        actions={<>
+          <ActionButton
+            label="AI Receptionist"
+            icon={<Phone className="size-4" />}
+            title="Hand off to AI Receptionist"
+            description="Route inbound calls / WhatsApp to the AI receptionist agent."
+            fields={[{ name: "channel", label: "Channel", defaultValue: "WhatsApp + IVR" }]}
+            confirmLabel="Activate"
+            successMessage={() => "AI Receptionist is now handling inbound traffic"}
+          />
+          <ActionButton
+            primary
+            label="Register Patient"
+            icon={<UserPlus className="size-4" />}
+            title="Register new patient"
+            description="Create a full patient profile with ABHA / Aadhaar e-KYC."
+            fields={[
+              { name: "name", label: "Full name", placeholder: "Patient name" },
+              { name: "mobile", label: "Mobile / ABHA", placeholder: "+91…" },
+              { name: "dob", label: "Date of birth", placeholder: "DD / MM / YYYY" },
+            ]}
+            confirmLabel="Create profile"
+            successMessage={(v) => `${v.name} registered · MRN HX-${Math.floor(Math.random() * 9_000_000 + 1_000_000)}`}
+          />
+        </>} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
