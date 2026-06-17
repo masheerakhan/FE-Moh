@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action-button";
+import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mic, Sparkles, PlusCircle, FileText, Stethoscope, AlertTriangle } from "lucide-react";
@@ -19,8 +21,26 @@ function DoctorWorkspace() {
         title="Consultation Workspace"
         subtitle="In-room with Aarav Mehta · 38M · MRN HX-2284913 · Last visit 12 days ago"
         actions={<>
-          <Button variant="outline" size="sm"><FileText className="size-4 mr-1" /> Templates</Button>
-          <Button size="sm" style={{ background: "var(--gradient-primary)" }} className="text-primary-foreground border-0"><Mic className="size-4 mr-1" /> Start AI Scribe</Button>
+          <ActionButton
+            label="Templates"
+            icon={<FileText className="size-4" />}
+            title="Apply consultation template"
+            description="Pre-fill the SOAP note from a saved template."
+            fields={[{ name: "template", label: "Template name", placeholder: "e.g. Hypertension follow-up", defaultValue: "Hypertension follow-up" }]}
+            confirmLabel="Apply template"
+            successMessage={(v) => `Template “${v.template}” applied`}
+          />
+          <ActionButton
+            primary
+            label="Start AI Scribe"
+            icon={<Mic className="size-4" />}
+            title="Start AI Scribe session"
+            description="Begin ambient transcription. Audio is encrypted end-to-end."
+            fields={[{ name: "language", label: "Language", defaultValue: "English + Hindi" }]}
+            confirmLabel="Start session"
+            successMessage={() => "AI Scribe is now listening"}
+            onConfirm={() => toast.info("Session ID: SCR-" + Math.floor(Math.random() * 90000 + 10000))}
+          />
         </>}
       />
 
