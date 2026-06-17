@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action-button";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Download, ShieldCheck } from "lucide-react";
 
@@ -26,7 +28,30 @@ export function EMR() {
     <div className="p-6 lg:p-8 space-y-6">
       <PageHeader title="Electronic Medical Record"
         subtitle="Aarav Mehta · MRN HX-2284913 · Longitudinal record · FHIR R4 · ABDM linked"
-        actions={<><Button variant="outline" size="sm"><Download className="size-4 mr-1" /> Export FHIR</Button><Button size="sm">Share with patient</Button></>} />
+        actions={<>
+          <ActionButton
+            label="Export FHIR"
+            icon={<Download className="size-4" />}
+            title="Export FHIR R4 bundle"
+            description="Generates a signed FHIR R4 JSON bundle for the patient record."
+            fields={[{ name: "scope", label: "Date range", defaultValue: "Last 5 years" }]}
+            confirmLabel="Generate bundle"
+            successMessage={() => "FHIR bundle generated · download link emailed"}
+            onConfirm={() => toast.info("Bundle ID: FHIR-" + Date.now().toString().slice(-6))}
+          />
+          <ActionButton
+            primary
+            label="Share with patient"
+            title="Share record with patient"
+            description="Send a secure, time-limited link to the patient app."
+            fields={[
+              { name: "channel", label: "Channel", defaultValue: "WhatsApp + Email" },
+              { name: "expires", label: "Expires in", defaultValue: "7 days" },
+            ]}
+            confirmLabel="Send"
+            successMessage={(v) => `Record shared via ${v.channel}`}
+          />
+        </>} />
 
       <div className="grid grid-cols-12 gap-6">
         <Card className="col-span-12 lg:col-span-4">

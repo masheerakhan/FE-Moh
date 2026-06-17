@@ -1,10 +1,12 @@
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LucideIcon } from "lucide-react";
 import { CheckCircle2 } from "lucide-react";
+import { ActionButton, type ActionField } from "@/components/action-button";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export interface ModuleSection {
   title: string;
@@ -16,13 +18,16 @@ export interface ModulePageProps {
   subtitle: string;
   icon: LucideIcon;
   primaryAction?: string;
+  primaryActionFields?: ActionField[];
+  primaryActionDescription?: string;
+  primaryActionConfirmLabel?: string;
   stats?: { label: string; value: string; hint?: string }[];
   sections: ModuleSection[];
   workflow?: string[];
   children?: React.ReactNode;
 }
 
-export function ModulePage({ title, subtitle, icon: Icon, primaryAction, stats, sections, workflow, children }: ModulePageProps) {
+export function ModulePage({ title, subtitle, icon: Icon, primaryAction, primaryActionFields, primaryActionDescription, primaryActionConfirmLabel, stats, sections, workflow, children }: ModulePageProps) {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <PageHeader
@@ -30,8 +35,17 @@ export function ModulePage({ title, subtitle, icon: Icon, primaryAction, stats, 
         subtitle={subtitle}
         actions={
           <>
-            <Button variant="outline" size="sm">Export</Button>
-            {primaryAction && <Button size="sm" style={{ background: "var(--gradient-primary)" }} className="text-primary-foreground border-0">{primaryAction}</Button>}
+            <Button variant="outline" size="sm" onClick={() => toast.success(`${title} export queued`, { description: "CSV will be emailed when ready." })}>Export</Button>
+            {primaryAction && (
+              <ActionButton
+                primary
+                label={primaryAction}
+                description={primaryActionDescription ?? `Trigger the ${primaryAction.toLowerCase()} workflow for ${title}.`}
+                fields={primaryActionFields ?? [{ name: "notes", label: "Notes", placeholder: "Optional context", type: "textarea" }]}
+                confirmLabel={primaryActionConfirmLabel ?? primaryAction}
+                successMessage={() => `${primaryAction} — request submitted`}
+              />
+            )}
           </>
         }
       />

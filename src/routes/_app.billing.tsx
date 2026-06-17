@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action-button";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 export const Route = createFileRoute("/_app/billing")({
@@ -31,7 +32,32 @@ function Billing() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <PageHeader title="Billing & Finance" subtitle="Invoices, GST, packages, memberships, collections, accounting & payouts."
-        actions={<><Button variant="outline" size="sm">GST Report</Button><Button size="sm" style={{ background: "var(--gradient-primary)" }} className="text-primary-foreground border-0">New Invoice</Button></>} />
+        actions={<>
+          <ActionButton
+            label="GST Report"
+            title="Generate GST report"
+            description="Compile GSTR-1 / GSTR-3B summaries for the selected period."
+            fields={[
+              { name: "period", label: "Period", defaultValue: "Jun 2026" },
+              { name: "format", label: "Format", defaultValue: "GSTR-3B (JSON)" },
+            ]}
+            confirmLabel="Generate"
+            successMessage={(v) => `GST report queued for ${v.period}`}
+          />
+          <ActionButton
+            primary
+            label="New Invoice"
+            title="Create invoice"
+            description="Create a new invoice. GST is auto-applied per HSN/SAC."
+            fields={[
+              { name: "patient", label: "Patient", placeholder: "Patient name" },
+              { name: "amount", label: "Amount (₹)", type: "number", placeholder: "0" },
+              { name: "items", label: "Line items", placeholder: "Consultation, lab, pharmacy…", type: "textarea" },
+            ]}
+            confirmLabel="Create invoice"
+            successMessage={(v) => `Invoice for ${v.patient} created · ₹ ${v.amount}`}
+          />
+        </>} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
