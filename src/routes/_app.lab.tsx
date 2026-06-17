@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2 } from "lucide-react";
 import { labOrders } from "@/lib/mock-data";
 import { useCollection } from "@/lib/use-collection";
+import { ActionButton } from "@/components/action-button";
 
 type Order = { id: string; orderNo: string; patient: string; panel: string; collected: string; status: string };
 const seed: Order[] = labOrders.map((o, i) => ({ id: `ord${i}`, orderNo: o.id, patient: o.patient, panel: o.panel, collected: o.collected, status: o.status }));
@@ -41,7 +42,18 @@ function Lab() {
       <PageHeader title="Lab Management" subtitle="Test booking, sample collection, result entry, LIS integration, and AI report analysis."
         actions={
           <>
-            <Button variant="outline" size="sm">Home collection</Button>
+            <ActionButton
+              label="Home collection"
+              title="Schedule home collection"
+              description="Dispatch a phlebotomist to the patient's address."
+              fields={[
+                { name: "patient", label: "Patient", placeholder: "Patient name" },
+                { name: "address", label: "Address", type: "textarea", placeholder: "Pickup address" },
+                { name: "slot", label: "Slot", defaultValue: "Tomorrow · 7-9 AM" },
+              ]}
+              confirmLabel="Schedule"
+              successMessage={(v) => `Home collection scheduled for ${v.patient}`}
+            />
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-1" /> New order</Button></DialogTrigger>
               <DialogContent>
