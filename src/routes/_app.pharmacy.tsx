@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Plus } from "lucide-react";
 import { inventory } from "@/lib/mock-data";
 import { useCollection } from "@/lib/use-collection";
+import { ActionButton } from "@/components/action-button";
 
 type Item = { id: string; sku: string; name: string; batch: string; expiry: string; stock: number; status: string };
 const seed: Item[] = inventory.map((i, idx) => ({ id: `inv${idx}`, ...i }));
@@ -39,7 +40,17 @@ function Pharmacy() {
       <PageHeader title="Pharmacy Management" subtitle="Inventory, batches, expiry, purchase orders, Rx mapping, refill reminders."
         actions={
           <>
-            <Button variant="outline" size="sm">PO · Auto-suggest</Button>
+            <ActionButton
+              label="PO · Auto-suggest"
+              title="Auto-suggest purchase order"
+              description="AI builds a PO from low-stock SKUs, consumption velocity, and lead times."
+              fields={[
+                { name: "vendor", label: "Vendor", defaultValue: "MedPlus Distributors" },
+                { name: "horizon", label: "Coverage horizon", defaultValue: "30 days" },
+              ]}
+              confirmLabel="Generate PO"
+              successMessage={(v) => `PO drafted for ${v.vendor} · ${v.horizon} cover`}
+            />
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-1" /> New SKU</Button></DialogTrigger>
               <DialogContent>
