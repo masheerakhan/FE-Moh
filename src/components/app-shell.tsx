@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
-  Activity, Bell, Search, Stethoscope, Users, Calendar, FileText, Receipt,
+  Bell, Search, Stethoscope, Users, Calendar, FileText, Receipt,
   Pill, FlaskConical, Video, Bot, Mic, Brain, HeartPulse, BarChart3,
   Building2, ShieldCheck, LayoutDashboard, UserRound, Sparkles,
   Palette, CreditCard, KeyRound, Crown,
@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import mohLogo from "@/assets/moh-logo.png.asset.json";
 
 const nav = [
   { group: "Overview", items: [
@@ -55,13 +56,12 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-        <div className="px-5 py-5 flex items-center gap-2 border-b border-sidebar-border">
-          <div className="size-9 rounded-lg flex items-center justify-center" style={{ background: "var(--gradient-primary)" }}>
-            <Activity className="size-5 text-primary-foreground" />
+        <div className="px-4 py-4 border-b border-sidebar-border">
+          <div className="bg-white rounded-lg p-2 flex items-center justify-center">
+            <img src={mohLogo.url} alt="MOH Clinics — Metabolic and Obesity Health" className="h-12 w-auto object-contain" />
           </div>
-          <div>
-            <div className="font-semibold tracking-tight">Helix OS</div>
-            <div className="text-[11px] text-sidebar-foreground/60">Healthcare Operating System</div>
+          <div className="mt-2 text-[11px] text-sidebar-foreground/70 text-center tracking-wide">
+            Healthcare Operating System
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
