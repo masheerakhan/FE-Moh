@@ -12,43 +12,43 @@ import { Badge } from "@/components/ui/badge";
 import mohLogo from "@/assets/moh-logo.png.asset.json";
 
 const nav = [
-  { group: "Overview", items: [
-    { to: "/", label: "Command Center", icon: LayoutDashboard },
-    { to: "/clinics", label: "Multi-clinic", icon: Building2 },
-    { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  ]},
-  { group: "Clinical", items: [
-    { to: "/doctor", label: "Doctor Workspace", icon: Stethoscope },
-    { to: "/emr", label: "EMR", icon: FileText },
-    { to: "/telemedicine", label: "Telemedicine", icon: Video },
-    { to: "/lab", label: "Lab", icon: FlaskConical },
-    { to: "/pharmacy", label: "Pharmacy", icon: Pill },
-  ]},
-  { group: "Front Desk", items: [
-    { to: "/reception", label: "Reception", icon: Users },
-    { to: "/appointments", label: "Appointments", icon: Calendar },
-    { to: "/billing", label: "Billing & Finance", icon: Receipt },
-  ]},
-  { group: "Patient", items: [
-    { to: "/patient", label: "Patient App", icon: UserRound },
-  ]},
+  // { group: "Overview", items: [
+  //   { to: "/", label: "Command Center", icon: LayoutDashboard },
+  //   { to: "/clinics", label: "Multi-clinic", icon: Building2 },
+  //   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  // ]},
+  // { group: "Clinical", items: [
+  //   { to: "/doctor", label: "Doctor Workspace", icon: Stethoscope },
+  //   { to: "/emr", label: "EMR", icon: FileText },
+  //   { to: "/telemedicine", label: "Telemedicine", icon: Video },
+  //   { to: "/lab", label: "Lab", icon: FlaskConical },
+  //   { to: "/pharmacy", label: "Pharmacy", icon: Pill },
+  // ]},
+  // { group: "Front Desk", items: [
+  //   { to: "/reception", label: "Reception", icon: Users },
+  //   { to: "/appointments", label: "Appointments", icon: Calendar },
+  //   { to: "/billing", label: "Billing & Finance", icon: Receipt },
+  // ]},
+  // { group: "Patient", items: [
+  //   { to: "/patient", label: "Patient App", icon: UserRound },
+  // ]},
   { group: "Enterprise", items: [
     { to: "/admin/super", label: "Super Admin", icon: Crown },
     { to: "/admin/org", label: "Organization Admin", icon: Building2 },
     { to: "/admin/clinic", label: "Clinic Admin", icon: LayoutDashboard },
     { to: "/admin/features", label: "Feature Toggles", icon: Flag },
-    { to: "/whitelabel", label: "White Label", icon: Palette },
-    { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
+    // { to: "/whitelabel", label: "White Label", icon: Palette },
+    // { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { to: "/rbac", label: "Advanced RBAC", icon: KeyRound },
   ]},
-  { group: "AI Layer", items: [
-    { to: "/ai/receptionist", label: "AI Receptionist", icon: Bot },
-    { to: "/ai/scribe", label: "AI Medical Scribe", icon: Mic },
-    { to: "/ai/copilot", label: "AI Clinical Copilot", icon: Sparkles },
-    { to: "/ai/reports", label: "AI Report Analysis", icon: Brain },
-    { to: "/ai/care", label: "AI Care Coordinator", icon: HeartPulse },
-    { to: "/ai/risk", label: "AI Risk Engine", icon: ShieldCheck },
-  ]},
+  // { group: "AI Layer", items: [
+  //   { to: "/ai/receptionist", label: "AI Receptionist", icon: Bot },
+  //   { to: "/ai/scribe", label: "AI Medical Scribe", icon: Mic },
+  //   { to: "/ai/copilot", label: "AI Clinical Copilot", icon: Sparkles },
+  //   { to: "/ai/reports", label: "AI Report Analysis", icon: Brain },
+  //   { to: "/ai/care", label: "AI Care Coordinator", icon: HeartPulse },
+  //   { to: "/ai/risk", label: "AI Risk Engine", icon: ShieldCheck },
+  // ]},
 ];
 
 export function AppShell() {

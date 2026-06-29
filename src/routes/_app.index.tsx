@@ -7,7 +7,8 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { ArrowUpRight, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_app/")({
-  head: () => ({ meta: [{ title: "Helix OS — Command Center" }, { name: "description", content: "AI-powered Healthcare Operating System command center." }] }),
+  // head: () => ({ meta: [{ title: "Helix OS — Command Center" }, { name: "description", content: "AI-powered Healthcare Operating System command center." }] }),
+  head: () => ({ meta: [{ title: "MOH Clinics" }, { name: "description", content: "AI-powered Healthcare Operating System command center." }] }),
   component: Dashboard,
 });
 
