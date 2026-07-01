@@ -1,12 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
 import { HeartPulse } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/care")({
   head: () => ({ meta: [{ title: "AI Care Coordinator — Helix OS" }] }),
   component: () => (
     <ModulePage title="AI Care Coordinator" icon={HeartPulse} primaryAction="View cohorts"
       subtitle="Chronic disease monitoring, medication adherence, WhatsApp follow-ups, symptom tracking & escalation."
+      primaryActionFields={[
+        { name: "cohort", label: "Cohort Name", placeholder: "e.g. Diabetes Type-2 High Risk" },
+      ]}
+      primaryActionConfirmLabel="View Cohort"
+      primaryActionOnConfirm={(v) => {
+        toast.success(`Cohort "${v.cohort}" loaded`, { description: "42 patients matched. Care pathways displayed." });
+      }}
       stats={[
         { label: "Patients enrolled", value: "412,820" },
         { label: "Adherence", value: "84%", hint: "+11 pts" },

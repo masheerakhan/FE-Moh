@@ -1,12 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
 import { CreditCard } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/subscriptions")({
   head: () => ({ meta: [{ title: "Subscriptions — Helix OS" }] }),
   component: () => (
     <ModulePage title="SaaS Subscription Engine" icon={CreditCard} primaryAction="Create plan"
       subtitle="Plans, feature toggles, metered billing, renewals and dunning across organizations and white-label partners."
+      primaryActionFields={[
+        { name: "name", label: "Plan Name", placeholder: "e.g. Enterprise Plus" },
+        { name: "price", label: "Monthly Price (₹)", type: "number", placeholder: "0" },
+        { name: "seats", label: "Included Seats", type: "number", placeholder: "e.g. 50" },
+      ]}
+      primaryActionConfirmLabel="Create Plan"
+      primaryActionOnConfirm={(v) => {
+        toast.success(`Plan "${v.name}" created`, { description: `₹${v.price}/mo · ${v.seats} seats included.` });
+      }}
       stats={[
         { label: "Active subscriptions", value: "498" },
         { label: "MRR", value: "₹38.4 Cr" },

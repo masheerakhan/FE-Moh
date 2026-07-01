@@ -1,13 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { kpis, visitsTrend, revenueSplit, aiAgents, todayAppointments } from "@/lib/mock-data";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, Legend } from "recharts";
 import { ArrowUpRight, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/")({
-  // head: () => ({ meta: [{ title: "Helix OS — Command Center" }, { name: "description", content: "AI-powered Healthcare Operating System command center." }] }),
   head: () => ({ meta: [{ title: "MOH Clinics" }, { name: "description", content: "AI-powered Healthcare Operating System command center." }] }),
   component: Dashboard,
 });
@@ -15,6 +15,45 @@ export const Route = createFileRoute("/_app/")({
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
 function Dashboard() {
+  const navigate = useNavigate();
+
+  const handleStartConsult = () => {
+    toast.success("Consultation Workspace starting", {
+      description: "Redirecting you to the doctor portal..."
+    });
+    setTimeout(() => {
+      navigate({ to: "/doctor" });
+    }, 800);
+  };
+
+  const handleOpenInbox = () => {
+    toast.success("Unified Clinician Inbox", {
+      description: "0 unread patient messages. All critical notifications and alerts cleared."
+    });
+  };
+
+  const handleViewAllAppointments = () => {
+    navigate({ to: "/appointments" });
+  };
+
+  const handleAppointmentClick = (patient: string, type: string, status: string, reason: string) => {
+    toast.success(`Appointment: ${patient}`, {
+      description: `Type: ${type} · Status: ${status} · Reason: ${reason}`
+    });
+  };
+
+  const handleAgentClick = (name: string, resolved: string, calls: number) => {
+    toast.info(`${name} Telemetry`, {
+      description: `Active. Handled ${calls.toLocaleString()} queries. Resolution rate: ${resolved}.`
+    });
+  };
+
+  const handleKpiClick = (label: string, value: string, delta: string) => {
+    toast.info(`${label} Trend`, {
+      description: `Current: ${value} (Growing at ${delta} vs previous period).`
+    });
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="rounded-2xl p-6 lg:p-8 text-primary-foreground relative overflow-hidden" style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-elegant)" }}>
@@ -25,15 +64,15 @@ function Dashboard() {
             <p className="opacity-90 mt-1 max-w-xl">Your network handled <b>18,432</b> consultations today. AI Scribe drafted <b>14,802</b> SOAP notes — saving an estimated <b>1,230 clinician hours</b>.</p>
           </div>
           <div className="hidden md:flex gap-2">
-            <Button variant="secondary" className="bg-white/15 text-primary-foreground hover:bg-white/25 border-0">Start Consult</Button>
-            <Button className="bg-white text-primary hover:bg-white/90">Open Inbox <ArrowUpRight className="size-4 ml-1" /></Button>
+            <Button variant="secondary" className="bg-white/15 text-primary-foreground hover:bg-white/25 border-0" onClick={handleStartConsult}>Start Consult</Button>
+            <Button className="bg-white text-primary hover:bg-white/90" onClick={handleOpenInbox}>Open Inbox <ArrowUpRight className="size-4 ml-1" /></Button>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((k) => (
-          <Card key={k.label}>
+          <Card key={k.label} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => handleKpiClick(k.label, k.value, k.delta)}>
             <CardContent className="p-5">
               <div className="text-xs text-muted-foreground">{k.label}</div>
               <div className="text-2xl font-semibold mt-1">{k.value}</div>
@@ -90,12 +129,12 @@ function Dashboard() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Today's appointments</CardTitle>
-            <Button variant="ghost" size="sm">View all</Button>
+            <Button variant="ghost" size="sm" onClick={handleViewAllAppointments}>View all</Button>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y">
               {todayAppointments.map((a) => (
-                <div key={a.time + a.patient} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/40">
+                <div key={a.time + a.patient} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/40 cursor-pointer" onClick={() => handleAppointmentClick(a.patient, a.type, a.status, a.reason)}>
                   <div className="text-sm font-mono text-muted-foreground w-12">{a.time}</div>
                   <div className="size-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">{a.patient.split(" ").map(x=>x[0]).join("")}</div>
                   <div className="flex-1 min-w-0">
@@ -120,7 +159,7 @@ function Dashboard() {
           <CardHeader><CardTitle>AI agents — live</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {aiAgents.map((a) => (
-              <div key={a.name} className="flex items-center justify-between text-sm border rounded-lg p-3 hover:border-primary/40 transition">
+              <div key={a.name} className="flex items-center justify-between text-sm border rounded-lg p-3 hover:border-primary/40 transition cursor-pointer" onClick={() => handleAgentClick(a.name, a.resolved, a.calls)}>
                 <div>
                   <div className="font-medium">{a.name}</div>
                   <div className="text-xs text-muted-foreground">{a.lang}</div>

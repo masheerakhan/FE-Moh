@@ -1,12 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
 import { Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/copilot")({
   head: () => ({ meta: [{ title: "AI Clinical Copilot — Helix OS" }] }),
   component: () => (
     <ModulePage title="AI Clinical Copilot" icon={Sparkles} primaryAction="Try on a case"
       subtitle="Diagnosis assistance, investigation suggestions, treatment recommendations, drug-interaction & allergy checks."
+      primaryActionFields={[
+        { name: "case_id", label: "Case / Patient ID", placeholder: "e.g. PAT-2026-0042" },
+      ]}
+      primaryActionConfirmLabel="Launch Copilot"
+      primaryActionOnConfirm={(v) => {
+        toast.success(`Copilot session started for ${v.case_id}`, { description: "Differential diagnosis engine active. Evidence loaded." });
+      }}
       stats={[
         { label: "Cases assisted", value: "5,340" },
         { label: "Dx top-3 accuracy", value: "91%" },

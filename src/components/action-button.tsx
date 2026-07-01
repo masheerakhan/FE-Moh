@@ -10,8 +10,10 @@ export type ActionField = {
   name: string;
   label: string;
   placeholder?: string;
-  type?: "text" | "textarea" | "number" | "email" | "tel";
+  type?: "text" | "textarea" | "number" | "email" | "tel" | "select";
+  options?: { label: string; value: string }[];
   defaultValue?: string;
+  required?: boolean;
 };
 
 export interface ActionButtonProps {
@@ -51,7 +53,7 @@ export function ActionButton({
 
   const submit = () => {
     for (const f of fields) {
-      if (!values[f.name]?.toString().trim()) {
+      if (f.required !== false && !values[f.name]?.toString().trim()) {
         toast.error(`${f.label} is required`);
         return;
       }
@@ -93,6 +95,20 @@ export function ActionButton({
                     value={values[f.name] ?? ""}
                     onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
                   />
+                ) : f.type === "select" ? (
+                  <select
+                    id={`action-field-${f.name}`}
+                    value={values[f.name] ?? ""}
+                    onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select an option</option>
+                    {f.options?.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <Input
                     id={`action-field-${f.name}`}

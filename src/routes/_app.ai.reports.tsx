@@ -1,12 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
 import { Brain } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/reports")({
   head: () => ({ meta: [{ title: "AI Report Analysis — Helix OS" }] }),
   component: () => (
     <ModulePage title="AI Report Analysis" icon={Brain} primaryAction="Upload report"
       subtitle="PDF parsing, OCR, trend analysis, abnormality detection, risk scoring across labs & imaging."
+      primaryActionFields={[
+        { name: "report_type", label: "Report Type", placeholder: "e.g. Blood Panel CBC" },
+      ]}
+      primaryActionConfirmLabel="Upload & Analyze"
+      primaryActionOnConfirm={(v) => {
+        toast.success(`Report "${v.report_type}" analysis complete`, { description: "Key findings extracted. Abnormalities flagged." });
+      }}
       stats={[
         { label: "Reports parsed (24h)", value: "3,120" },
         { label: "Critical alerts", value: "188" },

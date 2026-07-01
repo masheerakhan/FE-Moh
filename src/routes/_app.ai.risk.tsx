@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { risks } from "@/lib/mock-data";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/risk")({
   head: () => ({ meta: [{ title: "AI Risk Engine — Helix OS" }] }),
@@ -24,7 +25,15 @@ function Risk() {
           <CardHeader><CardTitle className="text-base">High-risk patients</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {risks.map((r) => (
-              <div key={r.patient} className="border rounded-lg p-3">
+              <div
+                key={r.patient}
+                className="border rounded-lg p-3 cursor-pointer transition-colors hover:bg-accent/50"
+                onClick={() => {
+                  toast.success(`Viewing risk profile for ${r.patient}`, {
+                    description: `${r.risk} · Score: ${r.score.toFixed(2)} · Signal: ${r.signal}`,
+                  });
+                }}
+              >
                 <div className="flex items-center justify-between">
                   <div><div className="font-medium text-sm">{r.patient}</div><div className="text-xs text-muted-foreground">{r.risk} · {r.signal}</div></div>
                   <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/15 font-mono">{r.score.toFixed(2)}</Badge>

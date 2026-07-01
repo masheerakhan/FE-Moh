@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import mohLogo from "@/assets/moh-logo.png.asset.json";
 
+
 const nav = [
   // { group: "Overview", items: [
   //   { to: "/", label: "Command Center", icon: LayoutDashboard },
@@ -24,19 +25,19 @@ const nav = [
   //   { to: "/lab", label: "Lab", icon: FlaskConical },
   //   { to: "/pharmacy", label: "Pharmacy", icon: Pill },
   // ]},
-  // { group: "Front Desk", items: [
-  //   { to: "/reception", label: "Reception", icon: Users },
-  //   { to: "/appointments", label: "Appointments", icon: Calendar },
-  //   { to: "/billing", label: "Billing & Finance", icon: Receipt },
-  // ]},
-  // { group: "Patient", items: [
-  //   { to: "/patient", label: "Patient App", icon: UserRound },
-  // ]},
+  { group: "Front Desk", items: [
+    { to: "/reception", label: "Reception", icon: Users },
+    // { to: "/appointments", label: "Appointments", icon: Calendar },
+    // { to: "/billing", label: "Billing & Finance", icon: Receipt },
+  ]},
+  { group: "Patient", items: [
+    { to: "/patient", label: "Patient App", icon: UserRound },
+  ]},
   { group: "Enterprise", items: [
     { to: "/admin/super", label: "Super Admin", icon: Crown },
     { to: "/admin/org", label: "Organization Admin", icon: Building2 },
     { to: "/admin/clinic", label: "Clinic Admin", icon: LayoutDashboard },
-    { to: "/admin/features", label: "Feature Toggles", icon: Flag },
+    // { to: "/admin/features", label: "Feature Toggles", icon: Flag },
     // { to: "/whitelabel", label: "White Label", icon: Palette },
     // { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { to: "/rbac", label: "Advanced RBAC", icon: KeyRound },

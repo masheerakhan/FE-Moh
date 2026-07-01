@@ -3,6 +3,7 @@ import { ModulePage } from "@/components/module-page";
 import { Bot } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/receptionist")({
   head: () => ({ meta: [{ title: "AI Receptionist — Helix OS" }] }),
@@ -24,6 +25,13 @@ function AIReceptionist() {
         subtitle="Voice + WhatsApp + IVR agent for appointment booking, FAQs, follow-ups, in 12 Indian languages."
         icon={Bot}
         primaryAction="Open agent console"
+        primaryActionFields={[
+          { name: "channel", label: "Channel", placeholder: "WhatsApp / IVR / Web Chat" },
+        ]}
+        primaryActionConfirmLabel="Open Console"
+        primaryActionOnConfirm={(v) => {
+          toast.success(`Agent console opened for ${v.channel}`, { description: "Live conversation stream active." });
+        }}
         stats={[
           { label: "Calls handled (24h)", value: "12,480", hint: "94% resolved" },
           { label: "Avg handle time", value: "1:42", hint: "vs human 4:10" },

@@ -1,12 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
 import { Palette } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/whitelabel")({
   head: () => ({ meta: [{ title: "White Label — Helix OS" }] }),
   component: () => (
     <ModulePage title="White Label Management" icon={Palette} primaryAction="New brand partner"
       subtitle="Run Brand A, B, C and beyond on one codebase — isolated branding, domains, users, configuration and messaging templates per tenant."
+      primaryActionFields={[
+        { name: "brand", label: "Brand Name", placeholder: "e.g. HealthFirst" },
+        { name: "domain", label: "Custom Domain", placeholder: "e.g. app.healthfirst.in" },
+        { name: "contact", label: "Partner Contact Email", placeholder: "partner@example.com", type: "email" },
+      ]}
+      primaryActionConfirmLabel="Onboard Partner"
+      primaryActionOnConfirm={(v) => {
+        toast.success(`Brand partner "${v.brand}" onboarded`, { description: `Domain: ${v.domain} · Contact: ${v.contact}` });
+      }}
       stats={[
         { label: "Brand partners", value: "27" },
         { label: "Custom domains live", value: "412" },
