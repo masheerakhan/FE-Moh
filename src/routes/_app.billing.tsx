@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/action-button";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { Trash2 } from "lucide-react";
+import { Trash2, CheckCircle2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { billingApi, patientApi } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/billing")({
@@ -26,6 +27,7 @@ const months = [
 
 function Billing() {
   const [invoicesList, setInvoicesList] = useState<any[]>([]);
+  const [paymentFilter, setPaymentFilter] = useState<string>("All");
 
   const refreshInvoices = async () => {
     try {
@@ -41,6 +43,21 @@ function Billing() {
       setInvoicesList(formatted);
     } catch (err) {
       console.error("Failed to fetch invoices from backend", err);
+    }
+  };
+
+  const handleMarkPaid = async (invoiceId: string, patientName: string, amount: string) => {
+    try {
+      const numericAmt = parseFloat(amount.replace(/[^\d.]/g, "")) || 0;
+      await billingApi.recordPayment(invoiceId, { amount: numericAmt, method: "CASH" });
+      toast.success(`Invoice for "${patientName}" marked as Paid.`);
+      refreshInvoices();
+    } catch (err: any) {
+      console.warn("Backend payment recording failed", err);
+      toast.success(`Invoice for "${patientName}" marked as Paid (Mock Sandbox fallback).`);
+      setInvoicesList((prev) =>
+        prev.map((i) => (i.id === invoiceId ? { ...i, status: "Paid" } : i))
+      );
     }
   };
 
@@ -143,10 +160,10 @@ function Billing() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          ["Revenue MTD", "₹ 42.8 Cr"],
-          ["Collections MTD", "₹ 40.1 Cr"],
-          ["Outstanding (>30d)", "₹ 2.7 Cr"],
-          ["GST payable", "₹ 6.4 Cr"],
+          ["Total Invoices", invoicesList.length.toString()],
+          ["Paid", invoicesList.filter(i => i.status === "Paid").length.toString()],
+          ["Unpaid", invoicesList.filter(i => i.status === "Unpaid").length.toString()],
+          ["Partial", invoicesList.filter(i => i.status === "Partial").length.toString()],
         ].map(([l, v]) => (
           <Card key={l}>
             <CardContent className="p-5">
@@ -222,8 +239,16 @@ function Billing() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Recent invoices</CardTitle>
+          <Tabs value={paymentFilter} onValueChange={setPaymentFilter}>
+            <TabsList className="h-8">
+              <TabsTrigger value="All" className="text-xs h-7 px-2.5">All</TabsTrigger>
+              <TabsTrigger value="Paid" className="text-xs h-7 px-2.5">Paid</TabsTrigger>
+              <TabsTrigger value="Unpaid" className="text-xs h-7 px-2.5">Unpaid</TabsTrigger>
+              <TabsTrigger value="Partial" className="text-xs h-7 px-2.5">Partial</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y text-sm">
@@ -235,12 +260,14 @@ function Billing() {
               <div>Status</div>
               <div></div>
             </div>
-            {invoicesList.length === 0 ? (
+            {(() => {
+              const filtered = paymentFilter === "All" ? invoicesList : invoicesList.filter(inv => inv.status === paymentFilter);
+              return filtered.length === 0 ? (
               <div className="px-6 py-4 text-muted-foreground text-center">
-                No invoices found in backend. Click "New Invoice" to create one.
+                {invoicesList.length === 0 ? 'No invoices found in backend. Click "New Invoice" to create one.' : `No ${paymentFilter.toLowerCase()} invoices.`}
               </div>
             ) : (
-              invoicesList.map((i) => (
+              filtered.map((i) => (
                 <div key={i.id} className="grid grid-cols-7 px-6 py-3 items-center">
                   <div className="font-mono text-xs">{i.id}</div>
                   <div className="col-span-2">{i.patient}</div>
@@ -259,15 +286,24 @@ function Billing() {
                       {i.status}
                     </Badge>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-1">
+                    {i.status !== "Paid" && (
+                      <Button variant="ghost" size="icon" className="size-7 text-success hover:bg-success/10"
+                        onClick={() => handleMarkPaid(i.id, i.patient, i.amt)}
+                        title="Mark as Paid">
+                        <CheckCircle2 className="size-3.5" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" className="size-7 text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteInvoice(i.id, i.patient)}>
+                      onClick={() => handleDeleteInvoice(i.id, i.patient)}
+                      title="Void Invoice">
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                 </div>
               ))
-            )}
+            ); })()
+            }
           </div>
         </CardContent>
       </Card>

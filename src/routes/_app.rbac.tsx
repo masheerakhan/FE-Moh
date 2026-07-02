@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { KeyRound, Plus, Trash2, Pencil, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
@@ -147,12 +147,26 @@ const SEED_ROLES: Role[] = [
   },
 ];
 
-function RbacPage() {
+export function RbacPage() {
   const { items: roles, create, update, remove } = useCollection<Role>("rbac_roles", SEED_ROLES);
   const [selectedId, setSelectedId] = useState<string>(roles[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
+
+  // Auto-restore Receptionist role if deleted or missing from the loaded list
+  useEffect(() => {
+    if (roles.length > 0) {
+      const hasReceptionist = roles.some((r) => r.id === "role_receptionist");
+      if (!hasReceptionist) {
+        const receptionistRole = SEED_ROLES.find((r) => r.id === "role_receptionist");
+        if (receptionistRole) {
+          create(receptionistRole);
+          toast.success("Restored system Receptionist role successfully.");
+        }
+      }
+    }
+  }, [roles, create]);
 
   const filtered = useMemo(
     () => roles.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
@@ -162,10 +176,6 @@ function RbacPage() {
 
   const togglePermission = (screenKey: string, action: Action) => {
     if (!selected) return;
-    if (selected.system) {
-      toast.error("System role permissions are read-only", { description: "Clone it to a custom role first." });
-      return;
-    }
     const current = selected.permissions[screenKey] ?? [];
     const next = current.includes(action) ? current.filter((a) => a !== action) : [...current, action];
     const nextPerms = { ...selected.permissions, [screenKey]: next };
@@ -173,11 +183,13 @@ function RbacPage() {
   };
 
   const handleSave = (role: Role) => {
-    if (editing) {
-      update(editing.id, { ...role, updated_at: new Date().toISOString(), updated_by: currentUser.name });
+    const isEdit = roles.some((r) => r.id === role.id);
+    if (isEdit) {
+      update(role.id, { ...role, updated_at: new Date().toISOString(), updated_by: currentUser.name });
       toast.success(`Role "${role.name}" updated`);
     } else {
-      create({ ...role, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), updated_by: currentUser.name });
+      const created = create(role);
+      setSelectedId(created.id);
       toast.success(`Role "${role.name}" created`);
     }
     setDialogOpen(false);
@@ -185,27 +197,23 @@ function RbacPage() {
   };
 
   const handleDelete = (role: Role) => {
-    if (role.system) {
-      toast.error("System roles cannot be deleted");
-      return;
-    }
     remove(role.id);
-    toast.success(`Role "${role.name}" deleted`);
+    toast.success(`${role.system ? "System role" : "Role"} "${role.name}" deleted`);
     if (selectedId === role.id) setSelectedId(roles[0]?.id ?? "");
   };
 
   const cloneRole = (role: Role) => {
-    const clone: Omit<Role, "id"> = {
+    const cloneTarget: Role = {
       ...role,
+      id: crypto.randomUUID(),
       name: `${role.name} (Copy)`,
       system: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       updated_by: currentUser.name,
     };
-    const created = create(clone);
-    setSelectedId(created.id);
-    toast.success("Role cloned");
+    setEditing(cloneTarget);
+    setDialogOpen(true);
   };
 
   const grouped = useMemo(() => {
@@ -222,12 +230,24 @@ function RbacPage() {
     <div className="p-6 lg:p-8 space-y-6">
       <PageHeader title="Advanced RBAC" subtitle="Dynamic roles · screen-level · action-level · scoped to organization_id / clinic_id."
         actions={
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditing(null); }}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={() => setEditing(null)}><Plus className="size-4 mr-1" /> New role</Button>
-            </DialogTrigger>
-            <RoleDialog initial={editing} onSave={handleSave} onCancel={() => { setDialogOpen(false); setEditing(null); }} />
-          </Dialog>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                localStorage.removeItem("rbac_roles");
+                window.location.reload();
+              }}
+            >
+              Reset to Defaults
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditing(null); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => setEditing(null)}><Plus className="size-4 mr-1" /> New role</Button>
+              </DialogTrigger>
+              <RoleDialog initial={editing} onSave={handleSave} onCancel={() => { setDialogOpen(false); setEditing(null); }} />
+            </Dialog>
+          </div>
         } />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -276,8 +296,8 @@ function RbacPage() {
               </div>
               <div className="flex gap-2 shrink-0">
                 <Button size="sm" variant="outline" onClick={() => cloneRole(selected)}>Clone</Button>
-                <Button size="sm" variant="outline" disabled={selected.system} onClick={() => { setEditing(selected); setDialogOpen(true); }}><Pencil className="size-3.5 mr-1" /> Edit</Button>
-                <Button size="sm" variant="outline" disabled={selected.system} onClick={() => handleDelete(selected)}><Trash2 className="size-3.5 mr-1 text-destructive" /> Delete</Button>
+                <Button size="sm" variant="outline" onClick={() => { setEditing(selected); setDialogOpen(true); }}><Pencil className="size-3.5 mr-1" /> Edit</Button>
+                <Button size="sm" variant="outline" onClick={() => handleDelete(selected)}><Trash2 className="size-3.5 mr-1 text-destructive" /> Delete</Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -308,7 +328,7 @@ function RbacPage() {
                                   const checked = (selected.permissions[s.key] ?? []).includes(a);
                                   return (
                                     <td key={a} className="px-2 py-2 text-center">
-                                      <Checkbox checked={checked} onCheckedChange={() => togglePermission(s.key, a)} disabled={selected.system} />
+                                      <Checkbox checked={checked} onCheckedChange={() => togglePermission(s.key, a)} />
                                     </td>
                                   );
                                 })}
@@ -340,6 +360,23 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
   const [scope, setScope] = useState<RoleScope>(initial?.scope ?? "clinic");
   const [orgId, setOrgId] = useState<string>(initial?.organization_id ?? currentUser.organization_id);
   const [clinicId, setClinicId] = useState<string>(initial?.clinic_id ?? currentUser.clinic_id);
+  const [permissions, setPermissions] = useState<Record<string, Action[]>>(initial?.permissions ?? {});
+
+  // Update form states if initial changes (e.g. edit/clone targets load)
+  useEffect(() => {
+    setName(initial?.name ?? "");
+    setDescription(initial?.description ?? "");
+    setScope(initial?.scope ?? "clinic");
+    setOrgId(initial?.organization_id ?? currentUser.organization_id);
+    setClinicId(initial?.clinic_id ?? currentUser.clinic_id);
+    setPermissions(initial?.permissions ?? {});
+  }, [initial]);
+
+  const toggleLocalPermission = (screenKey: string, action: Action) => {
+    const current = permissions[screenKey] ?? [];
+    const next = current.includes(action) ? current.filter((a) => a !== action) : [...current, action];
+    setPermissions({ ...permissions, [screenKey]: next });
+  };
 
   const submit = () => {
     if (!name.trim()) { toast.error("Name is required"); return; }
@@ -350,8 +387,8 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
       scope,
       organization_id: scope === "platform" ? undefined : orgId,
       clinic_id: scope === "clinic" ? clinicId : undefined,
-      system: false,
-      permissions: initial?.permissions ?? {},
+      system: initial ? initial.system : false,
+      permissions: permissions,
       created_at: initial?.created_at ?? new Date().toISOString(),
       updated_at: new Date().toISOString(),
       updated_by: currentUser.name,
@@ -360,55 +397,96 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
   };
 
   return (
-    <DialogContent>
-      <DialogHeader><DialogTitle>{initial ? "Edit role" : "Create custom role"}</DialogTitle></DialogHeader>
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>Role name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Senior Cardiology Resident" />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Description</Label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this role can do…" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>{initial ? "Edit role details & permissions" : "Create custom role w/ permissions"}</DialogTitle>
+      </DialogHeader>
+      
+      <Tabs defaultValue="info" className="w-full">
+        <TabsList className="grid grid-cols-2 w-full max-w-[400px]">
+          <TabsTrigger value="info">1. Role Information</TabsTrigger>
+          <TabsTrigger value="perms">2. Grant Permissions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="info" className="space-y-4 mt-4">
           <div className="space-y-1.5">
-            <Label>Scope</Label>
-            <Select value={scope} onValueChange={(v) => setScope(v as RoleScope)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="platform">Platform</SelectItem>
-                <SelectItem value="organization">Organization</SelectItem>
-                <SelectItem value="clinic">Clinic</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Role name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Senior Cardiology Resident" />
           </div>
-          {scope !== "platform" && (
+          <div className="space-y-1.5">
+            <Label>Description</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this role can do…" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label>Organization</Label>
-              <Select value={orgId} onValueChange={setOrgId}>
+              <Label>Scope</Label>
+              <Select value={scope} onValueChange={(v) => setScope(v as RoleScope)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {organizations.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                  <SelectItem value="platform">Platform</SelectItem>
+                  <SelectItem value="organization">Organization</SelectItem>
+                  <SelectItem value="clinic">Clinic</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          )}
-          {scope === "clinic" && (
-            <div className="space-y-1.5">
-              <Label>Clinic</Label>
-              <Select value={clinicId} onValueChange={setClinicId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {clinics.filter((c) => c.organization_id === orgId).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground flex items-start gap-2"><KeyRound className="size-3.5 mt-0.5" /> Permissions are edited from the matrix after the role is saved.</p>
-      </div>
-      <DialogFooter>
+            {scope !== "platform" && (
+              <div className="space-y-1.5">
+                <Label>Organization</Label>
+                <Select value={orgId} onValueChange={setOrgId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {scope === "clinic" && (
+              <div className="space-y-1.5">
+                <Label>Clinic</Label>
+                <Select value={clinicId} onValueChange={setClinicId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {clinics.filter((c) => c.organization_id === orgId).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="perms" className="mt-4 space-y-4">
+          <div className="rounded-md border max-h-[380px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs sticky top-0 z-10">
+                <tr className="border-b">
+                  <th className="text-left px-3 py-2 font-medium bg-card">Module / Screen</th>
+                  {ACTIONS.map((a) => <th key={a} className="px-2 py-2 capitalize font-medium bg-card">{a}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {SCREENS.map((s) => (
+                  <tr key={s.key} className="border-t">
+                    <td className="px-3 py-2">
+                      <div className="font-medium text-xs">{s.screen}</div>
+                      <div className="text-[10px] text-muted-foreground">{s.module} · {s.key}</div>
+                    </td>
+                    {ACTIONS.map((a) => {
+                      const checked = (permissions[s.key] ?? []).includes(a);
+                      return (
+                        <td key={a} className="px-2 py-2 text-center">
+                          <Checkbox checked={checked} onCheckedChange={() => toggleLocalPermission(s.key, a)} />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <DialogFooter className="mt-4 pt-4 border-t">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={submit}>{initial ? "Save changes" : "Create role"}</Button>
       </DialogFooter>
