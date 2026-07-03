@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, User, FileText } from "lucide-react";
 
 interface Appointment {
   id: string;
+  patientId?: string;
   patientName: string;
   doctorName: string;
   startTime: string; // e.g. "09:15"
@@ -19,6 +20,7 @@ interface HorizontalTimeGridProps {
   doctors: string[];
   selectedDate: string;
   onDateChange: (date: string) => void;
+  onAppointmentClick?: (apt: Appointment) => void;
 }
 
 export function HorizontalTimeGrid({
@@ -26,35 +28,31 @@ export function HorizontalTimeGrid({
   doctors,
   selectedDate,
   onDateChange,
+  onAppointmentClick,
 }: HorizontalTimeGridProps) {
   // Operational hours: 09:00 to 17:00 (5:00 PM)
   const START_HOUR = 9;
   const END_HOUR = 17;
   const INTERVAL_MINUTES = 15;
+  const SLOT_HEIGHT = 44; // Fine-tuned vertical spacing per 15-min slot
 
   // Generate 15-minute time slots
   const generateTimeSlots = () => {
     const slots: string[] = [];
     for (let hour = START_HOUR; hour < END_HOUR; hour++) {
       for (let min = 0; min < 60; min += INTERVAL_MINUTES) {
-        const hStr = String(hour).padStart(2, "0");
-        const mStr = String(min).padStart(2, "0");
-        slots.push(`${hStr}:${mStr}`);
+        slots.push(`${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`);
       }
     }
-    // Add the final end slot (17:00)
-    slots.push(`${String(END_HOUR).padStart(2, "0")}:00`);
     return slots;
   };
 
   const timeSlots = generateTimeSlots();
 
-  // Convert "HH:MM" to slot index
-  const timeToSlotIndex = (timeStr: string) => {
+  // Convert "HH:MM" to total minutes from START_HOUR
+  const timeToMinutes = (timeStr: string) => {
     const [h, m] = timeStr.split(":").map(Number);
-    const totalMinutes = (h - START_HOUR) * 60 + m;
-    const index = Math.floor(totalMinutes / INTERVAL_MINUTES);
-    return Math.max(0, Math.min(index, timeSlots.length - 1));
+    return (h - START_HOUR) * 60 + m;
   };
 
   // Navigate date
@@ -70,12 +68,14 @@ export function HorizontalTimeGrid({
     onDateChange(d.toISOString().slice(0, 10));
   };
 
+  const activeDoctors = doctors.length > 0 ? doctors : ["Dr. Riya Iyer"];
+
   return (
     <Card className="w-full overflow-hidden shadow-elegant border bg-card">
       <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
         <div className="flex items-center gap-2">
           <CalendarIcon className="size-5 text-primary" />
-          <CardTitle className="text-base font-semibold">Horizontal 15-Min Scheduler Grid</CardTitle>
+          <CardTitle className="text-base font-semibold">Vertical 15-Min Scheduler Grid</CardTitle>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="size-8" onClick={handlePrevDay}>
@@ -87,107 +87,121 @@ export function HorizontalTimeGrid({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-0 overflow-x-auto">
-        <div className="min-w-[1200px]">
-          {/* Header Row: Time Slots */}
-          <div className="grid grid-cols-[160px_1fr] bg-muted/40 border-b text-[11px] text-muted-foreground font-mono">
-            <div className="p-3 border-r font-medium flex items-center gap-1.5 bg-muted/20">
-              <Clock className="size-3.5" /> Doctor / Resource
+      <CardContent className="p-0">
+        {/* Header Row: Doctors */}
+        <div
+          className="grid bg-muted/40 border-b text-xs text-muted-foreground font-semibold text-center items-center divide-x"
+          style={{
+            gridTemplateColumns: `80px repeat(${activeDoctors.length}, 1fr)`,
+          }}
+        >
+          <div className="p-3 font-medium text-left pl-4">Time</div>
+          {activeDoctors.map((doc) => (
+            <div key={doc} className="p-3 truncate text-foreground font-bold">
+              {doc}
             </div>
-            <div className="relative h-12 flex">
+          ))}
+        </div>
+
+        {/* Time Tracks & Doctor Columns Layout */}
+        <div className="max-h-[600px] overflow-y-auto relative">
+          <div
+            className="grid divide-x"
+            style={{
+              gridTemplateColumns: `80px repeat(${activeDoctors.length}, 1fr)`,
+              height: `${timeSlots.length * SLOT_HEIGHT}px`,
+            }}
+          >
+            {/* Left Column: Time Slot Labels */}
+            <div className="relative border-r bg-muted/10">
               {timeSlots.map((slot, i) => (
                 <div
                   key={slot}
-                  className="absolute border-l h-full text-center flex flex-col justify-between pt-1 pb-1"
+                  className="absolute left-0 right-0 border-b flex items-center justify-center text-[10px] font-mono text-muted-foreground/80"
                   style={{
-                    left: `${(i / (timeSlots.length - 1)) * 100}%`,
-                    width: `${100 / (timeSlots.length - 1)}%`,
-                    transform: "translateX(-50%)",
+                    top: `${i * SLOT_HEIGHT}px`,
+                    height: `${SLOT_HEIGHT}px`,
                   }}
                 >
-                  <span className="font-semibold text-[10px]">{slot}</span>
-                  <div className="h-2 w-px bg-muted-foreground/30 mx-auto" />
+                  {slot}
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* Grid Rows: Doctors */}
-          <div className="divide-y">
-            {doctors.map((doctor) => {
-              // Filter appointments for this doctor on selected date
+            {/* Doctor Column Tracks */}
+            {activeDoctors.map((doc) => {
+              // Filter appointments matching current doctor & selected date
               const docAppointments = appointments.filter(
-                (a) => a.doctorName === doctor && a.date === selectedDate
+                (a) => a.doctorName === doc && a.date === selectedDate
               );
 
               return (
-                <div key={doctor} className="grid grid-cols-[160px_1fr] min-h-[76px] items-stretch">
-                  {/* Doctor Title Column */}
-                  <div className="p-4 border-r flex flex-col justify-center bg-card font-medium text-xs">
-                    <span className="text-foreground font-semibold">{doctor}</span>
-                    <span className="text-[10px] text-muted-foreground mt-0.5">15-Min Slots Available</span>
-                  </div>
+                <div
+                  key={doc}
+                  className="relative h-full bg-slate-50/10 dark:bg-slate-900/10"
+                >
+                  {/* Grid background lines */}
+                  {timeSlots.map((_, i) => (
+                    <div
+                      key={`line-${i}`}
+                      className="absolute left-0 right-0 border-b border-dashed border-muted-foreground/10"
+                      style={{
+                        top: `${i * SLOT_HEIGHT}px`,
+                        height: `${SLOT_HEIGHT}px`,
+                      }}
+                    />
+                  ))}
 
-                  {/* Horizontal Time Slots Track */}
-                  <div className="relative h-full bg-slate-50/40 dark:bg-slate-900/10 flex items-center">
-                    {/* Vertical grid line guides */}
-                    {timeSlots.map((_, i) => (
+                  {/* Absolute Appointment Blocks */}
+                  {docAppointments.map((apt) => {
+                    const startMin = timeToMinutes(apt.startTime);
+                    const endMin = timeToMinutes(apt.endTime);
+                    
+                    const startPercent = (startMin / 15) * SLOT_HEIGHT;
+                    const durationHeight = ((endMin - startMin) / 15) * SLOT_HEIGHT;
+
+                    return (
                       <div
-                        key={`line-${i}`}
-                        className="absolute top-0 bottom-0 border-l border-dashed border-muted-foreground/10"
+                        key={apt.id}
+                        onClick={() => onAppointmentClick?.(apt)}
+                        className="absolute left-1.5 right-1.5 rounded border shadow-sm p-1.5 flex flex-col justify-between overflow-hidden group transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
                         style={{
-                          left: `${(i / (timeSlots.length - 1)) * 100}%`,
+                          top: `${startPercent}px`,
+                          height: `${Math.max(SLOT_HEIGHT, durationHeight) - 2}px`,
+                          background:
+                            apt.status === "CONFIRMED"
+                              ? "linear-gradient(to bottom, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.08))"
+                              : "linear-gradient(to bottom, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.08))",
+                          borderColor:
+                            apt.status === "CONFIRMED"
+                              ? "rgba(16, 185, 129, 0.4)"
+                              : "rgba(245, 158, 11, 0.4)",
                         }}
-                      />
-                    ))}
-
-                    {/* Stretched Horizontal Appointment Blocks */}
-                    {docAppointments.map((apt) => {
-                      const startIdx = timeToSlotIndex(apt.startTime);
-                      const endIdx = timeToSlotIndex(apt.endTime);
-                      
-                      const leftPercent = (startIdx / (timeSlots.length - 1)) * 100;
-                      const widthPercent = ((endIdx - startIdx) / (timeSlots.length - 1)) * 100;
-
-                      return (
-                        <div
-                          key={apt.id}
-                          className="absolute h-[46px] rounded-lg border shadow-sm p-2 flex flex-col justify-between overflow-hidden group transition-all hover:scale-[1.01] cursor-pointer"
-                          style={{
-                            left: `${leftPercent}%`,
-                            width: `${widthPercent}%`,
-                            background:
+                      >
+                        <div className="flex items-start justify-between gap-1 leading-tight">
+                          <span className="text-[10px] font-bold text-foreground truncate flex items-center gap-0.5">
+                            <User className="size-2.5 text-muted-foreground shrink-0" /> {apt.patientName}
+                          </span>
+                          <Badge
+                            className={`text-[8px] h-3.5 px-0.5 font-normal rounded-sm shrink-0 scale-90 ${
                               apt.status === "CONFIRMED"
-                                ? "linear-gradient(to right, var(--success-15, rgba(16, 185, 129, 0.15)), var(--success-5, rgba(16, 185, 129, 0.05)))"
-                                : "linear-gradient(to right, var(--warning-15, rgba(245, 158, 11, 0.15)), var(--warning-5, rgba(245, 158, 11, 0.05)))",
-                            borderColor:
-                              apt.status === "CONFIRMED"
-                                ? "rgba(16, 185, 129, 0.3)"
-                                : "rgba(245, 158, 11, 0.3)",
-                          }}
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[11px] font-semibold text-foreground truncate flex items-center gap-1">
-                              <User className="size-3 text-muted-foreground" /> {apt.patientName}
-                            </span>
-                            <Badge
-                              className={`text-[8px] h-4 px-1 rounded-sm ${
-                                apt.status === "CONFIRMED"
-                                  ? "bg-success/15 text-success hover:bg-success/15"
-                                  : "bg-warning/15 text-warning hover:bg-warning/15"
-                              }`}
-                            >
-                              {apt.status}
-                            </Badge>
-                          </div>
-                          <div className="text-[9px] font-mono text-muted-foreground flex justify-between">
-                            <span>{apt.startTime} - {apt.endTime}</span>
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity">18% GST</span>
-                          </div>
+                                ? "bg-success/20 text-success hover:bg-success/20"
+                                : "bg-warning/20 text-warning hover:bg-warning/20"
+                            }`}
+                          >
+                            {apt.status}
+                          </Badge>
                         </div>
-                      );
-                    })}
-                  </div>
+                        
+                        <div className="flex items-center justify-between text-[8px] font-mono text-muted-foreground mt-0.5">
+                          <span>{apt.startTime} - {apt.endTime}</span>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 text-teal-500 font-sans">
+                            <FileText className="size-2" /> Paste Lab Doc
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
