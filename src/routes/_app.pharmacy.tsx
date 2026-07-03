@@ -9,19 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Pencil, Check, X, AlertTriangle } from "lucide-react";
 import { inventory as defaultInventory } from "@/lib/mock-data";
 import { ActionButton } from "@/components/action-button";
 import { pharmacyApi } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/pharmacy")({
-  head: () => ({ meta: [{ title: "Pharmacy — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Pharmacy — MOH CLINICS" }] }),
   component: Pharmacy,
 });
 
 function Pharmacy() {
   const [items, setItems] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editStock, setEditStock] = useState<number>(0);
   const [draft, setDraft] = useState({
     sku: "",
     name: "",
@@ -83,6 +85,40 @@ function Pharmacy() {
     }
   };
 
+  const startEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditStock(item.stock);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditStock(0);
+  };
+
+  const saveStock = async (item: any) => {
+    try {
+      if (!item.id.startsWith("inv")) {
+        await pharmacyApi.updateStock(item.id, editStock);
+      }
+      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, stock: editStock } : i));
+      toast.success(`${item.name} stock updated to ${editStock}`);
+    } catch (err) {
+      toast.error("Failed to update stock in backend");
+    } finally {
+      setEditingId(null);
+    }
+  };
+
+  const isExpiringSoon = (expiry: string) => {
+    if (!expiry) return false;
+    const parts = expiry.match(/(\w+)\s+(\d{4})/);
+    if (!parts) return false;
+    const months: Record<string, number> = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const exp = new Date(Number(parts[2]), months[parts[1]] ?? 0);
+    const diff = (exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30);
+    return diff < 3; // Expiring within 3 months
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <PageHeader
@@ -99,6 +135,12 @@ function Pharmacy() {
                 { name: "horizon", label: "Coverage horizon", defaultValue: "30 days" },
               ]}
               confirmLabel="Generate PO"
+              onConfirm={(v) => {
+                const lowStockItems = items.filter((i) => i.status === "Low" || i.status === "Critical");
+                toast.success(`PO drafted for ${v.vendor} · ${v.horizon} cover`, {
+                  description: `${lowStockItems.length} low-stock SKUs included: ${lowStockItems.slice(0, 3).map((i) => i.name).join(", ")}${lowStockItems.length > 3 ? "..." : ""}`,
+                });
+              }}
               successMessage={(v) => `PO drafted for ${v.vendor} · ${v.horizon} cover`}
             />
             <Dialog open={open} onOpenChange={setOpen}>
@@ -220,13 +262,28 @@ function Pharmacy() {
               <div className="text-right">Actions</div>
             </div>
             {items.map((i) => (
-              <div key={i.id} className="grid grid-cols-7 px-6 py-3 items-center">
+              <div key={i.id} className={`grid grid-cols-7 px-6 py-3 items-center ${i.status === "Critical" ? "bg-destructive/5" : ""}`}>
                 <div className="font-mono text-xs">{i.sku}</div>
                 <div className="col-span-2 font-medium">{i.name}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
                   {i.batch} · {i.expiry}
+                  {isExpiringSoon(i.expiry) && (
+                    <span title="Expiring soon"><AlertTriangle className="size-3 text-warning" /></span>
+                  )}
                 </div>
-                <div className="font-mono">{i.stock}</div>
+                <div className="font-mono">
+                  {editingId === i.id ? (
+                    <Input
+                      type="number"
+                      value={editStock}
+                      onChange={(e) => setEditStock(Number(e.target.value))}
+                      className="h-7 w-20 text-xs"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className={i.stock < 20 ? "text-warning font-semibold" : ""}>{i.stock}</span>
+                  )}
+                </div>
                 <div>
                   <Badge
                     className={
@@ -240,14 +297,31 @@ function Pharmacy() {
                     {i.status}
                   </Badge>
                 </div>
-                <div className="text-right">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => removeSKU(i.id!, i.name)}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                <div className="text-right flex items-center justify-end gap-1">
+                  {editingId === i.id ? (
+                    <>
+                      <Button size="icon" variant="ghost" className="size-7 text-success hover:bg-success/10" onClick={() => saveStock(i)} title="Save">
+                        <Check className="size-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="size-7" onClick={cancelEdit} title="Cancel">
+                        <X className="size-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button size="icon" variant="ghost" className="size-7" onClick={() => startEdit(i)} title="Edit stock">
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => removeSKU(i.id!, i.name)}
+                        title="Remove SKU"
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

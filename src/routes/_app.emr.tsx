@@ -2,15 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ActionButton } from "@/components/action-button";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Download, ShieldCheck } from "lucide-react";
+import { FileText, Download, ShieldCheck, Plus, Trash2, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { emrApi, patientApi } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/emr")({
-  head: () => ({ meta: [{ title: "EMR — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "EMR — MOH CLINICS" }] }),
   component: EMR,
 });
 
@@ -23,27 +25,39 @@ const defaultTimeline = [
 ];
 
 const defaultProblems = [
-  ["I10", "Essential (primary) hypertension", "Active · since 2023"],
-  ["E78.5", "Dyslipidemia, unspecified", "Active · since 2024"],
-  ["R73.03", "Pre-diabetes", "Active · since 2025"],
-];
+  [{ code: "I10", name: "Essential (primary) hypertension", status: "Active · since 2023", id: "def-1" }],
+  [{ code: "E78.5", name: "Dyslipidemia, unspecified", status: "Active · since 2024", id: "def-2" }],
+  [{ code: "R73.03", name: "Pre-diabetes", status: "Active · since 2025", id: "def-3" }],
+].map((arr) => arr[0]);
 
 export function EMR() {
   const [activePatient, setActivePatient] = useState<any>(null);
+  const [patientList, setPatientList] = useState<any[]>([]);
+  const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [problems, setProblems] = useState<any[]>(defaultProblems);
   const [timeline, setTimeline] = useState<any[]>(defaultTimeline);
 
-  const loadEMRData = async () => {
+  const loadEMRData = async (patientId?: string) => {
     try {
       const patients = await patientApi.getAll();
+      setPatientList(patients || []);
       if (patients && patients.length > 0) {
-        const patient = patients.find((p) => p.first_name.toLowerCase().includes("aarav")) || patients[0];
+        const patient = patientId
+          ? patients.find((p) => p.id === patientId) || patients[0]
+          : patients.find((p) => p.first_name.toLowerCase().includes("aarav")) || patients[0];
         setActivePatient(patient);
 
         // Fetch conditions from backend EMR database
         const conds = await emrApi.getConditions(patient.id!);
         if (conds && conds.length > 0) {
-          setProblems(conds.map((c) => [c.code, c.name, `${c.status} · onset ${c.onset_date || "2026"}`]));
+          setProblems(
+            conds.map((c) => ({
+              id: c.id,
+              code: c.code,
+              name: c.name,
+              status: `${c.status} · onset ${c.onset_date || "2026"}`,
+            }))
+          );
         }
 
         // Fetch encounters/history
@@ -56,6 +70,8 @@ export function EMR() {
             tag: "Consult",
           }));
           setTimeline([...encTimeline, ...defaultTimeline]);
+        } else {
+          setTimeline(defaultTimeline);
         }
       }
     } catch (err) {
@@ -67,6 +83,54 @@ export function EMR() {
     loadEMRData();
   }, []);
 
+  const handleAddCondition = async (v: Record<string, string>) => {
+    if (!activePatient) {
+      toast.error("No active patient selected");
+      return;
+    }
+    try {
+      await emrApi.createCondition({
+        patient: activePatient.id!,
+        code: v.code || "Z00",
+        name: v.name,
+        status: "ACTIVE" as const,
+        onset_date: v.onset || new Date().toISOString().slice(0, 10),
+      });
+      toast.success(`Condition "${v.name}" added to problem list`);
+      loadEMRData(activePatient.id);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || err.message || "Failed to add condition");
+    }
+  };
+
+  const handleDeleteCondition = async (condId: string, condName: string) => {
+    // Optimistic local removal
+    setProblems((prev) => prev.filter((p) => p.id !== condId));
+    toast.success(`Condition "${condName}" removed`);
+  };
+
+  // Filter timeline by tag
+  const filteredTimeline = (tag: string) =>
+    tag === "all" ? timeline : timeline.filter((t) => t.tag.toLowerCase() === tag.toLowerCase());
+
+  const TimelineList = ({ entries }: { entries: typeof timeline }) =>
+    entries.length === 0 ? (
+      <div className="text-xs text-muted-foreground py-4 text-center">No records found.</div>
+    ) : (
+      <ol className="relative border-l ml-3 space-y-5">
+        {entries.map((t, i) => (
+          <li key={i} className="ml-6">
+            <span className="absolute -left-1.5 size-3 rounded-full bg-primary" />
+            <div className="text-xs text-muted-foreground">{t.date}</div>
+            <div className="font-medium text-sm">{t.what}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              {t.who} <Badge variant="outline" className="text-[10px]">{t.tag}</Badge>
+            </div>
+          </li>
+        ))}
+      </ol>
+    );
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <PageHeader
@@ -74,6 +138,33 @@ export function EMR() {
         subtitle={`Patient: ${activePatient ? `${activePatient.first_name} ${activePatient.last_name || ""}` : "Aarav Mehta"} · MRN ${activePatient ? activePatient.id?.slice(-8).toUpperCase() : "HX-2284913"} · Longitudinal record · FHIR R4`}
         actions={
           <>
+            {/* Patient Picker */}
+            <div className="relative">
+              <Button variant="outline" size="sm" onClick={() => setShowPatientPicker((v) => !v)} className="gap-1.5">
+                Switch Patient <ChevronDown className="size-3.5" />
+              </Button>
+              {showPatientPicker && (
+                <div className="absolute right-0 top-10 z-50 bg-card border rounded-lg shadow-lg min-w-56 max-h-60 overflow-y-auto">
+                  {patientList.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setShowPatientPicker(false);
+                        loadEMRData(p.id);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="font-medium">{p.first_name} {p.last_name || ""}</div>
+                      <div className="text-xs text-muted-foreground">{p.phone}</div>
+                    </button>
+                  ))}
+                  {patientList.length === 0 && (
+                    <div className="px-4 py-3 text-xs text-muted-foreground">No patients in database</div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <ActionButton
               label="Export FHIR"
               icon={<Download className="size-4" />}
@@ -101,25 +192,58 @@ export function EMR() {
       />
 
       <div className="grid grid-cols-12 gap-6">
+        {/* Problem List with Add + Delete */}
         <Card className="col-span-12 lg:col-span-4">
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-base">Problem List</CardTitle>
+            <ActionButton
+              label="Add"
+              icon={<Plus className="size-3.5" />}
+              size="sm"
+              title="Add condition to problem list"
+              description="Add a new diagnosis or condition to the patient's problem list."
+              fields={[
+                { name: "name", label: "Condition Name", placeholder: "e.g. Type 2 Diabetes Mellitus" },
+                { name: "code", label: "ICD-10 Code", placeholder: "e.g. E11" },
+                { name: "onset", label: "Onset Date", placeholder: "YYYY-MM-DD" },
+              ]}
+              confirmLabel="Add Condition"
+              onConfirm={handleAddCondition}
+              successMessage={(v) => `${v.name} added to problem list`}
+            />
           </CardHeader>
           <CardContent className="text-sm space-y-2">
-            {problems.map(([code, name, status]) => (
-              <div key={code} className="flex items-start justify-between border rounded-md p-3">
-                <div>
-                  <div className="font-medium">{name}</div>
-                  <div className="text-xs text-muted-foreground">{status}</div>
+            {problems.map((prob) => (
+              <div key={prob.id || prob.code} className="flex items-start justify-between border rounded-md p-3 group">
+                <div className="flex-1">
+                  <div className="font-medium">{prob.name}</div>
+                  <div className="text-xs text-muted-foreground">{prob.status}</div>
                 </div>
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  {code}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className="font-mono text-[10px]">
+                    {prob.code}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDeleteCondition(prob.id, prob.name)}
+                    title="Remove condition"
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </div>
               </div>
             ))}
+            {problems.length === 0 && (
+              <div className="text-xs text-muted-foreground text-center py-4">
+                No conditions recorded. Click Add to create one.
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* Clinical Timeline with working tab filters */}
         <Card className="col-span-12 lg:col-span-8">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-base">Clinical timeline</CardTitle>
@@ -130,38 +254,28 @@ export function EMR() {
           <CardContent>
             <Tabs defaultValue="all">
               <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="consult">Consults</TabsTrigger>
-                <TabsTrigger value="lab">Labs</TabsTrigger>
-                <TabsTrigger value="rx">Rx</TabsTrigger>
+                <TabsTrigger value="all">All ({timeline.length})</TabsTrigger>
+                <TabsTrigger value="consult">Consults ({filteredTimeline("Consult").length})</TabsTrigger>
+                <TabsTrigger value="lab">Labs ({filteredTimeline("Lab").length})</TabsTrigger>
+                <TabsTrigger value="rx">Rx ({filteredTimeline("Rx").length})</TabsTrigger>
               </TabsList>
               <TabsContent value="all" className="mt-4">
-                <ol className="relative border-l ml-3 space-y-5">
-                  {timeline.map((t, i) => (
-                    <li key={i} className="ml-6">
-                      <span className="absolute -left-1.5 size-3 rounded-full bg-primary" />
-                      <div className="text-xs text-muted-foreground">{t.date}</div>
-                      <div className="font-medium text-sm">{t.what}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2">
-                        {t.who} <Badge variant="outline" className="text-[10px]">{t.tag}</Badge>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <TimelineList entries={filteredTimeline("all")} />
               </TabsContent>
-              <TabsContent value="consult" className="mt-4 text-sm text-muted-foreground">
-                Filtered to Consults.
+              <TabsContent value="consult" className="mt-4">
+                <TimelineList entries={filteredTimeline("Consult")} />
               </TabsContent>
-              <TabsContent value="lab" className="mt-4 text-sm text-muted-foreground">
-                Filtered to Labs.
+              <TabsContent value="lab" className="mt-4">
+                <TimelineList entries={filteredTimeline("Lab")} />
               </TabsContent>
-              <TabsContent value="rx" className="mt-4 text-sm text-muted-foreground">
-                Filtered to Prescriptions.
+              <TabsContent value="rx" className="mt-4">
+                <TimelineList entries={filteredTimeline("Rx")} />
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
 
+        {/* Data model entities */}
         <Card className="col-span-12">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -183,7 +297,13 @@ export function EMR() {
               "care_plans",
               "audit_log",
             ].map((t) => (
-              <div key={t} className="border rounded-md p-3 font-mono">
+              <div
+                key={t}
+                className="border rounded-md p-3 font-mono hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
+                onClick={() =>
+                  toast.success(`${t} entity`, { description: `Viewing schema for ${t}. HL7 FHIR R4 compliant.` })
+                }
+              >
                 {t}
               </div>
             ))}

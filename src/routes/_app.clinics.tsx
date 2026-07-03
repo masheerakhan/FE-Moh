@@ -17,7 +17,7 @@ type Clinic = { id: string; name: string; city: string; doctors: number; visits:
 const seed: Clinic[] = clinics.map((c, i) => ({ id: `c${i}`, ...c }));
 
 export const Route = createFileRoute("/_app/clinics")({
-  head: () => ({ meta: [{ title: "Multi-clinic — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Multi-clinic — MOH CLINICS" }] }),
   component: Clinics,
 });
 

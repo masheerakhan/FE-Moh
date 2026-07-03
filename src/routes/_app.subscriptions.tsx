@@ -4,7 +4,7 @@ import { CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/subscriptions")({
-  head: () => ({ meta: [{ title: "Subscriptions — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Subscriptions — MOH CLINICS" }] }),
   component: () => (
     <ModulePage title="SaaS Subscription Engine" icon={CreditCard} primaryAction="Create plan"
       subtitle="Plans, feature toggles, metered billing, renewals and dunning across organizations and white-label partners."

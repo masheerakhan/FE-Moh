@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/receptionist")({
-  head: () => ({ meta: [{ title: "AI Receptionist — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "AI Receptionist — MOH CLINICS" }] }),
   component: AIReceptionist,
 });
 

@@ -4,7 +4,7 @@ import { Brain } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/reports")({
-  head: () => ({ meta: [{ title: "AI Report Analysis — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "AI Report Analysis — MOH CLINICS" }] }),
   component: () => (
     <ModulePage title="AI Report Analysis" icon={Brain} primaryAction="Upload report"
       subtitle="PDF parsing, OCR, trend analysis, abnormality detection, risk scoring across labs & imaging."

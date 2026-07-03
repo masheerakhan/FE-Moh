@@ -7,17 +7,19 @@ import { ActionButton } from "@/components/action-button";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, Sparkles, PlusCircle, FileText, Stethoscope, AlertTriangle } from "lucide-react";
+import { Mic, Sparkles, PlusCircle, FileText, Stethoscope, AlertTriangle, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { emrApi, scribeApi, patientApi, referralApi } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/doctor")({
-  head: () => ({ meta: [{ title: "Doctor Workspace — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Doctor Workspace — MOH CLINICS" }] }),
   component: DoctorWorkspace,
 });
 
 function DoctorWorkspace() {
   const [activePatient, setActivePatient] = useState<any>(null);
+  const [patientList, setPatientList] = useState<any[]>([]);
+  const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [isScribeActive, setIsScribeActive] = useState<boolean>(false);
   const [doctorNotes, setDoctorNotes] = useState<string>("");
@@ -42,13 +44,16 @@ function DoctorWorkspace() {
     { t: "Urine ACR", why: "Microalbuminuria screen" },
   ]);
 
-  const loadPatient = async () => {
+  const loadPatient = async (patientId?: string) => {
     try {
       const patients = await patientApi.getAll();
+      setPatientList(patients || []);
       if (patients && patients.length > 0) {
         // Fetch first patient or patient with name matching Aarav Mehta
-        const aarav = patients.find((p) => p.first_name.toLowerCase().includes("aarav")) || patients[0];
-        setActivePatient(aarav);
+        const target = patientId
+          ? patients.find((p) => p.id === patientId) || patients[0]
+          : patients.find((p) => p.first_name.toLowerCase().includes("aarav")) || patients[0];
+        setActivePatient(target);
       }
     } catch (err) {
       console.error("Failed to load patient profile", err);
@@ -92,6 +97,9 @@ function DoctorWorkspace() {
           if (safety.has_warning) {
             toast.warning("AI Safety Alert", { description: safety.warnings.join(", ") });
           }
+
+          // Stop the scribe session
+          try { await scribeApi.stopSession(sessionId); } catch (_) { /* Ignore stop session error */ }
 
           setIsScribeActive(false);
           toast.success("AI Chart Note Synthesized successfully", { description: "SOAP plan updated based on speech transcription." });
@@ -154,6 +162,32 @@ function DoctorWorkspace() {
         subtitle={`In-room with ${activePatient ? `${activePatient.first_name} ${activePatient.last_name || ""}` : "Aarav Mehta"} · ${activePatient?.gender || "MALE"} · MRN ${activePatient ? activePatient.id?.slice(-8).toUpperCase() : "HX-2284913"}`}
         actions={
           <>
+            {/* Patient Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowPatientPicker((v) => !v)}
+                className="flex items-center gap-1.5 text-sm border rounded-md px-3 h-9 hover:bg-muted/50 transition-colors"
+              >
+                Switch Patient <ChevronDown className="size-3.5" />
+              </button>
+              {showPatientPicker && (
+                <div className="absolute right-0 top-10 z-50 bg-card border rounded-lg shadow-lg min-w-56 max-h-60 overflow-y-auto">
+                  {patientList.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setShowPatientPicker(false); loadPatient(p.id); }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="font-medium">{p.first_name} {p.last_name || ""}</div>
+                      <div className="text-xs text-muted-foreground">{p.phone}</div>
+                    </button>
+                  ))}
+                  {patientList.length === 0 && (
+                    <div className="px-4 py-3 text-xs text-muted-foreground">No patients in database</div>
+                  )}
+                </div>
+              )}
+            </div>
             <ActionButton
               label="Templates"
               icon={<FileText className="size-4" />}
@@ -221,7 +255,7 @@ function DoctorWorkspace() {
 
       <div className="grid grid-cols-12 gap-6">
         <Card className="col-span-12 lg:col-span-3">
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-base">Patient Snapshot</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">

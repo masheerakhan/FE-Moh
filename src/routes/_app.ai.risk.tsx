@@ -7,7 +7,7 @@ import { risks } from "@/lib/mock-data";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/risk")({
-  head: () => ({ meta: [{ title: "AI Risk Engine — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "AI Risk Engine — MOH CLINICS" }] }),
   component: Risk,
 });
 

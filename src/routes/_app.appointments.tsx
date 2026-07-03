@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DepartmentCalendar } from "@/components/department-calendar";
 
 export const Route = createFileRoute("/_app/appointments")({
-  head: () => ({ meta: [{ title: "Appointments — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Appointments — MOH CLINICS" }] }),
   component: AppointmentsPage,
 });
 
@@ -19,6 +20,7 @@ function AppointmentsPage() {
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
   const filteredAppointments = statusFilter === 'ALL'
     ? appointments
@@ -196,78 +198,114 @@ function AppointmentsPage() {
         }
       }}
     >
-      <Tabs value={statusFilter} onValueChange={setStatusFilter} className="mt-6">
-        <TabsList>
-          <TabsTrigger value="ALL">All</TabsTrigger>
-          <TabsTrigger value="PENDING">Pending</TabsTrigger>
-          <TabsTrigger value="CONFIRMED">Confirmed</TabsTrigger>
-          <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
+        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-auto">
+          <TabsList>
+            <TabsTrigger value="ALL">All</TabsTrigger>
+            <TabsTrigger value="PENDING">Pending</TabsTrigger>
+            <TabsTrigger value="CONFIRMED">Confirmed</TabsTrigger>
+            <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex bg-muted rounded p-0.5 text-xs font-semibold">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`px-3 py-1 rounded-sm transition-all ${
+              viewMode === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            List View
+          </button>
+          <button
+            onClick={() => setViewMode("calendar")}
+            className={`px-3 py-1 rounded-sm transition-all ${
+              viewMode === "calendar" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Grid View
+          </button>
+        </div>
+      </div>
 
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="text-base">Upcoming Appointments</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y text-sm">
-            <div className="grid grid-cols-6 px-6 py-2 text-xs text-muted-foreground font-medium">
-              <div>Patient</div>
-              <div>Doctor</div>
-              <div>Date</div>
-              <div>Time</div>
-              <div>Status</div>
-              <div></div>
-            </div>
-            {filteredAppointments.length === 0 ? (
-              <div className="px-6 py-4 text-muted-foreground text-center text-xs">
-                No appointments found. Click "New Appointment" to create one.
+      {viewMode === "list" ? (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-base">Upcoming Appointments</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y text-sm">
+              <div className="grid grid-cols-6 px-6 py-2 text-xs text-muted-foreground font-medium">
+                <div>Patient</div>
+                <div>Doctor</div>
+                <div>Date</div>
+                <div>Time</div>
+                <div>Status</div>
+                <div></div>
               </div>
-            ) : (
-              filteredAppointments.map((a: any) => (
-                <div key={a.id} className="grid grid-cols-6 px-6 py-3 items-center">
-                  <div className="text-xs">{a.patient_name || "Patient"}</div>
-                  <div className="text-xs">{a.doctor_name || "Doctor"}</div>
-                  <div className="font-mono text-xs">{a.date}</div>
-                  <div className="font-mono text-xs">{a.time}</div>
-                  <div>
-                    <Badge
-                      variant="outline"
-                      className={
-                        a.status === "CONFIRMED"
-                          ? "bg-success/15 text-success border-success/30 text-[10px]"
-                          : a.status === "CANCELLED"
-                            ? "bg-destructive/15 text-destructive border-destructive/30 text-[10px]"
-                            : "bg-warning/15 text-warning border-warning/30 text-[10px]"
-                      }
-                    >
-                      {a.status}
-                    </Badge>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-green-600 hover:bg-green-600/10"
-                      onClick={() => handleConfirmAppointment(a)}
-                    >
-                      <CheckCircle2 className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-destructive hover:bg-destructive/10"
-                      onClick={() => handleCancelAppointment(a.id, a.patient_name || "Patient")}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
+              {filteredAppointments.length === 0 ? (
+                <div className="px-6 py-4 text-muted-foreground text-center text-xs">
+                  No appointments found. Click "New Appointment" to create one.
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              ) : (
+                filteredAppointments.map((a: any) => (
+                  <div key={a.id} className="grid grid-cols-6 px-6 py-3 items-center">
+                    <div className="text-xs">{a.patient_name || "Patient"}</div>
+                    <div className="text-xs">{a.doctor_name || "Doctor"}</div>
+                    <div className="font-mono text-xs">{a.date}</div>
+                    <div className="font-mono text-xs">{a.time}</div>
+                    <div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          a.status === "CONFIRMED"
+                            ? "bg-success/15 text-success border-success/30 text-[10px]"
+                            : a.status === "CANCELLED"
+                              ? "bg-destructive/15 text-destructive border-destructive/30 text-[10px]"
+                              : "bg-warning/15 text-warning border-warning/30 text-[10px]"
+                        }
+                      >
+                        {a.status}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-green-600 hover:bg-green-600/10"
+                        onClick={() => handleConfirmAppointment(a)}
+                      >
+                        <CheckCircle2 className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleCancelAppointment(a.id, a.patient_name || "Patient")}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="mt-4">
+          <DepartmentCalendar
+            appointments={filteredAppointments.map((a: any) => ({
+              id: a.id,
+              patientName: a.patient_name || "Patient",
+              departmentName: a.department_name || "General Medicine",
+              startTime: a.time || "09:00",
+              status: a.status === "CONFIRMED" ? "CONFIRMED" : a.status === "CANCELLED" ? "CANCELLED" : "PENDING",
+            }))}
+            departments={["General Medicine", "Cardiology", "Pediatrics", "Endocrinology"]}
+            selectedDate={appointments[0]?.date || new Date().toISOString().slice(0, 10)}
+          />
+        </div>
+      )}
     </ModulePage>
   );
 }

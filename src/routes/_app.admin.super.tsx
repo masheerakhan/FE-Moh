@@ -1,20 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
-import { ShieldCheck, UserCheck, Trash2, ArrowLeftRight, Database, Globe, ShieldAlert, Ban } from "lucide-react";
+import { ShieldCheck, UserCheck, Trash2, ArrowLeftRight, Database, Globe, ShieldAlert, Ban, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo } from "react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { organizationApi } from "@/lib/api/organization";
 import { clinicApi } from "@/lib/api/clinics";
 import { useOrganizations } from "@/hooks/useOrganization";
 import OrganizationTable from "@/features/organization/components/OrganizationTable";
 import { ActionButton } from "@/components/action-button";
+import { axiosInstance } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app/admin/super")({
-  head: () => ({ meta: [{ title: "Super Admin — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Super Admin — MOH CLINICS" }] }),
   component: SuperAdmin,
 });
 
@@ -26,6 +30,35 @@ function SuperAdmin() {
   const queryClient = useQueryClient();
   const [adminsList, setAdminsList] = useState<any[]>(defaultAdmins);
   const { data: orgsData } = useOrganizations();
+
+  const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editOrg, setEditOrg] = useState("");
+
+  const handleEditClick = (admin: any) => {
+    setEditingAdmin(admin);
+    setEditName(admin.name);
+    setEditOrg(admin.org);
+  };
+
+  const handleSaveEditAdmin = () => {
+    if (!editName.trim() || !editOrg) {
+      toast.error("Name and Organization are required.");
+      return;
+    }
+
+    const updated = adminsList.map((a) => {
+      if (a.email === editingAdmin.email) {
+        return { ...a, name: editName.trim(), org: editOrg };
+      }
+      return a;
+    });
+
+    setAdminsList(updated);
+    localStorage.setItem("mock_org_admins", JSON.stringify(updated));
+    toast.success(`Admin details for "${editingAdmin.name}" updated successfully.`);
+    setEditingAdmin(null);
+  };
 
   const clinicsQuery = useQuery({
     queryKey: ["clinics"],
@@ -184,49 +217,107 @@ function SuperAdmin() {
       primaryActionFields={[
         { name: "name", label: "Organization Name", placeholder: "e.g. Apollo Health Group" },
         { name: "code", label: "Unique Code", placeholder: "e.g. org_apollo" },
+        { name: "admin_name", label: "Admin Full Name (Optional)", placeholder: "e.g. Dr. Amit Sharma", required: false },
+        { name: "admin_email", label: "Admin Email Address (Optional)", placeholder: "e.g. admin@apollo.com", required: false },
       ]}
-      primaryActionConfirmLabel="Create Organization"
+      primaryActionConfirmLabel="Create Organization & Admin"
       primaryActionOnConfirm={async (v: Record<string, string>) => {
-        const newOrg = {
-          id: `org_mock_${Date.now()}`,
-          name: v.name,
-          code: v.code,
-          email: `admin@${v.code}.com`,
-          phone: "+91 9999999999",
-          country: "India",
-          timezone: "Asia/Kolkata",
-          currency: "INR",
-          status: "ACTIVE" as const,
-        };
+        const orgCode = v.code;
+        const orgName = v.name;
+        const adminEmail = v.admin_email?.trim();
+        const adminName = v.admin_name?.trim();
 
         try {
-          await organizationApi.create({
-            name: v.name,
-            code: v.code,
-            email: `admin@${v.code}.com`,
+          // Action 1: Create Organization
+          const org = await organizationApi.create({
+            name: orgName,
+            code: orgCode,
+            email: adminEmail || `corporate@${orgCode}.com`,
             phone: "+91 9999999999",
             country: "India",
             timezone: "Asia/Kolkata",
             currency: "INR",
             status: "ACTIVE",
           });
-          toast.success(`Organization "${v.name}" onboarded successfully.`);
-        } catch (err: any) {
-          console.warn("Backend onboard failed, simulating sandbox success on frontend", err);
-          toast.success(`Organization "${v.name}" onboarded successfully (Mock Sandbox fallback)`);
+          
+          const orgId = org.id || `org_${orgCode}`;
 
-          const mockStr = localStorage.getItem("mock_organizations");
-          const mockOrgs = mockStr ? JSON.parse(mockStr) : [];
-          if (!mockOrgs.some((org: any) => org.code === v.code)) {
-            mockOrgs.push(newOrg);
-            localStorage.setItem("mock_organizations", JSON.stringify(mockOrgs));
+          // Only perform chained admin user creation if credentials are provided
+          if (adminEmail && adminName) {
+            // Action 2: Create Admin User (Chained)
+            const adminUserRes = await axiosInstance.post("/accounts/users/", {
+              username: adminEmail,
+              email: adminEmail,
+              first_name: adminName.split(" ")[0],
+              last_name: adminName.split(" ").slice(1).join(" ") || "",
+              password: "defaultPassword123!",
+              phone: "+91 9999999999",
+              is_active: true
+            });
+
+            const userId = adminUserRes.data.id;
+
+            // Action 3: Create Employee record linked to organization context
+            await axiosInstance.post("/employees/", {
+              user: userId,
+              clinic: null, // Org-level admins don't need a specific branch
+              designation: "Organization Admin",
+              gender: "MALE",
+              joining_date: new Date().toISOString().slice(0, 10),
+              employee_code: `EMP_${orgCode.toUpperCase()}_ADMIN`,
+              is_active_employee: true
+            });
+
+            // Action 4: Assign Role in RBAC system
+            await axiosInstance.post("/rbac/user-roles/", {
+              user: userId,
+              role_code: "role_org_admin"
+            });
           }
 
+          toast.success(`Organization "${orgName}" successfully onboarded.`);
+        } catch (err: any) {
+          console.warn("Backend nested onboarding failed, fallback to simulated execution", err);
+          
+          // Setup mock session fallback
+          const newOrg = {
+            id: `org_mock_${Date.now()}`,
+            name: orgName,
+            code: orgCode,
+            email: adminEmail || `corporate@${orgCode}.com`,
+            phone: "+91 9999999999",
+            country: "India",
+            timezone: "Asia/Kolkata",
+            currency: "INR",
+            status: "ACTIVE" as const,
+          };
+
+          // Save Org to Local Storage
+          const mockStr = localStorage.getItem("mock_organizations");
+          const mockOrgs = mockStr ? JSON.parse(mockStr) : [];
+          mockOrgs.push(newOrg);
+          localStorage.setItem("mock_organizations", JSON.stringify(mockOrgs));
+
+          // Save User Admin context to Local Storage (fixing default admins deletion bug)
+          if (adminEmail && adminName) {
+            const newAdmin = {
+              name: adminName,
+              email: adminEmail,
+              org: orgName
+            };
+
+            const savedAdmins = localStorage.getItem("mock_org_admins");
+            const currentList = savedAdmins ? JSON.parse(savedAdmins) : [...defaultAdmins];
+            currentList.push(newAdmin);
+            localStorage.setItem("mock_org_admins", JSON.stringify(currentList));
+            setAdminsList(currentList);
+          }
+
+          toast.success(`Organization onboarded successfully (Mock Sandbox fallback).`);
+          
           queryClient.setQueryData(["organizations"], (old: any) => {
             const list = Array.isArray(old) ? old : [];
-            if (list.some((org: any) => org.code === v.code)) {
-              return list;
-            }
+            if (list.some((org: any) => org.code === orgCode)) return list;
             return [...list, newOrg];
           });
         }
@@ -344,14 +435,26 @@ function SuperAdmin() {
                     </Badge>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-destructive hover:bg-destructive/10"
-                  onClick={() => handleRevokeAdmin(admin.email, admin.name)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-primary hover:bg-primary/10"
+                    onClick={() => handleEditClick(admin)}
+                    title="Edit Admin Profile"
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => handleRevokeAdmin(admin.email, admin.name)}
+                    title="Revoke Admin scope"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </CardContent>
@@ -366,6 +469,47 @@ function SuperAdmin() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Organization Admin Dialog Modal */}
+      {editingAdmin && (
+        <Dialog open={true} onOpenChange={() => setEditingAdmin(null)}>
+          <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white">
+            <DialogHeader className="border-b border-slate-800 pb-3">
+              <DialogTitle className="text-base font-bold text-white">Edit Organization Admin Profile</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-300">Admin Email (Read-Only)</Label>
+                <Input value={editingAdmin.email} disabled className="bg-slate-950 border-slate-800 text-xs text-slate-400" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-300">Admin Full Name</Label>
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="bg-slate-950 border-slate-800 text-xs text-slate-100" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-300">Associated Organization</Label>
+                <select
+                  value={editOrg}
+                  onChange={(e) => setEditOrg(e.target.value)}
+                  className="w-full h-10 bg-slate-950 border border-slate-800 rounded-md px-2 text-xs text-slate-100"
+                >
+                  {orgOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-800 pt-3.5">
+              <Button variant="outline" size="sm" onClick={() => setEditingAdmin(null)} className="h-9 text-xs border-slate-800 text-slate-300">
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveEditAdmin} className="h-9 text-xs bg-primary hover:bg-primary/90 text-white">
+                Save Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </ModulePage>
   );
 }

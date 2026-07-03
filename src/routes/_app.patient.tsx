@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { patientApi, appointmentApi, axiosInstance } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/patient")({
-  head: () => ({ meta: [{ title: "Patient App — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Patient App — MOH CLINICS" }] }),
   component: Patient,
 });
 

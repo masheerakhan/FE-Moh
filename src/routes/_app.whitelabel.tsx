@@ -4,7 +4,7 @@ import { Palette } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/whitelabel")({
-  head: () => ({ meta: [{ title: "White Label — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "White Label — MOH CLINICS" }] }),
   component: () => (
     <ModulePage title="White Label Management" icon={Palette} primaryAction="New brand partner"
       subtitle="Run Brand A, B, C and beyond on one codebase — isolated branding, domains, users, configuration and messaging templates per tenant."

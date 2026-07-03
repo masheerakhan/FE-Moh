@@ -17,7 +17,7 @@ import { useCollection } from "@/lib/use-collection";
 import { organizations, currentUser } from "@/lib/tenant-context";
 
 export const Route = createFileRoute("/_app/admin/features")({
-  head: () => ({ meta: [{ title: "Feature Management — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Feature Management — MOH CLINICS" }] }),
   component: FeaturesPage,
 });
 

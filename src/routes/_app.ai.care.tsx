@@ -4,7 +4,7 @@ import { HeartPulse } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/care")({
-  head: () => ({ meta: [{ title: "AI Care Coordinator — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "AI Care Coordinator — MOH CLINICS" }] }),
   component: () => (
     <ModulePage title="AI Care Coordinator" icon={HeartPulse} primaryAction="View cohorts"
       subtitle="Chronic disease monitoring, medication adherence, WhatsApp follow-ups, symptom tracking & escalation."

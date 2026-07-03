@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { billingApi, patientApi } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/billing")({
-  head: () => ({ meta: [{ title: "Billing & Finance — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Billing & Finance — MOH CLINICS" }] }),
   component: Billing,
 });
 

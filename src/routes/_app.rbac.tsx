@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
-import { KeyRound, Plus, Trash2, Pencil, ShieldCheck } from "lucide-react";
+import { KeyRound, Plus, Trash2, Pencil, ShieldCheck, Lock } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { useCollection } from "@/lib/use-collection";
 import { organizations, clinics, currentUser } from "@/lib/tenant-context";
 
 export const Route = createFileRoute("/_app/rbac")({
-  head: () => ({ meta: [{ title: "Advanced RBAC — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Advanced RBAC — MOH CLINICS" }] }),
   component: RbacPage,
 });
 
@@ -154,6 +154,35 @@ export function RbacPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
 
+  const [activeUser, setActiveUser] = useState(() => {
+    const saved = localStorage.getItem("active_user");
+    return saved ? JSON.parse(saved) : currentUser;
+  });
+
+  useEffect(() => {
+    const handleUserChange = () => {
+      const saved = localStorage.getItem("active_user");
+      if (saved) setActiveUser(JSON.parse(saved));
+    };
+    window.addEventListener("storage_user_change", handleUserChange);
+    return () => window.removeEventListener("storage_user_change", handleUserChange);
+  }, []);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const role = activeUser.role?.toLowerCase() || "";
+    const isAuthorized = ["super admin", "superadmin", "organization admin", "clinic admin"].includes(role);
+    if (!isAuthorized) {
+      toast.error("Access Forbidden", {
+        description: "You do not possess system privileges to administer role matrix definitions."
+      });
+      navigate({ to: "/" });
+    }
+  }, [activeUser, navigate]);
+
+  const isSuperAdmin = activeUser.role?.toUpperCase() === "SUPER ADMIN" || activeUser.role?.toUpperCase() === "SUPERADMIN";
+
   // Auto-restore Receptionist role if deleted or missing from the loaded list
   useEffect(() => {
     if (roles.length > 0) {
@@ -225,6 +254,58 @@ export function RbacPage() {
     });
     return Array.from(map.entries());
   }, []);
+
+  // --------------------------------------------------------------------------
+  // Custom permissions — user-defined rows added directly to the live matrix
+  // --------------------------------------------------------------------------
+  const [customPerms, setCustomPerms] = useState<{ module: string; screen: string; key: string }[]>([]);
+  const [addPermOpen, setAddPermOpen] = useState(false);
+  const [newPermModule, setNewPermModule] = useState("");
+  const [newPermScreen, setNewPermScreen] = useState("");
+  const [newPermKey, setNewPermKey] = useState("");
+
+  const addCustomPermission = () => {
+    const key = newPermKey.trim() || `${newPermModule.toLowerCase().replace(/\s+/g, ".")}.${newPermScreen.toLowerCase().replace(/\s+/g, "_")}`;
+    if (!newPermModule.trim() || !newPermScreen.trim()) {
+      toast.error("Module and Screen name are required");
+      return;
+    }
+    if (SCREENS.some((s) => s.key === key) || customPerms.some((s) => s.key === key)) {
+      toast.error(`Permission key "${key}" already exists`);
+      return;
+    }
+    setCustomPerms((prev) => [...prev, { module: newPermModule.trim(), screen: newPermScreen.trim(), key }]);
+    setNewPermModule("");
+    setNewPermScreen("");
+    setNewPermKey("");
+    setAddPermOpen(false);
+    toast.success(`Custom permission "${key}" added to matrix`);
+  };
+
+  const removeCustomPermission = (key: string) => {
+    setCustomPerms((prev) => prev.filter((p) => p.key !== key));
+    if (selected) {
+      const { [key]: _, ...rest } = selected.permissions;
+      update(selected.id, { permissions: rest, updated_at: new Date().toISOString(), updated_by: currentUser.name });
+    }
+    toast.success(`Custom permission "${key}" removed`);
+  };
+
+  // Group all screens (built-in + custom) for the matrix
+  const allGrouped = useMemo(() => {
+    const map = new Map<string, { module: string; screen: string; key: string; custom?: boolean }[]>();
+    SCREENS.forEach((s) => {
+      const list = map.get(s.module) ?? [];
+      list.push(s);
+      map.set(s.module, list);
+    });
+    customPerms.forEach((s) => {
+      const list = map.get(s.module) ?? [];
+      list.push({ ...s, custom: true });
+      map.set(s.module, list);
+    });
+    return Array.from(map.entries());
+  }, [customPerms]);
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -304,7 +385,7 @@ export function RbacPage() {
               <Tabs defaultValue="matrix">
                 <TabsList>
                   <TabsTrigger value="matrix">Permission matrix</TabsTrigger>
-                  <TabsTrigger value="json">Policy JSON</TabsTrigger>
+                  {isSuperAdmin && <TabsTrigger value="json">Policy JSON</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="matrix" className="mt-4">
                   <div className="overflow-x-auto rounded-md border">
@@ -313,17 +394,24 @@ export function RbacPage() {
                         <tr>
                           <th className="text-left px-3 py-2 font-medium">Module / Screen</th>
                           {ACTIONS.map((a) => <th key={a} className="px-2 py-2 capitalize font-medium">{a}</th>)}
+                          <th className="w-8" />
                         </tr>
                       </thead>
                       <tbody>
-                        {grouped.map(([mod, screens]) => (
+                        {allGrouped.map(([mod, screens]) => (
                           <>
                             <tr key={`g-${mod}`} className="bg-muted/20">
-                              <td colSpan={ACTIONS.length + 1} className="px-3 py-1.5 text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{mod}</td>
+                              <td colSpan={ACTIONS.length + 2} className="px-3 py-1.5 text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{mod}</td>
                             </tr>
                             {screens.map((s) => (
                               <tr key={s.key} className="border-t">
-                                <td className="px-3 py-2">{s.screen} <span className="text-xs text-muted-foreground">· {s.key}</span></td>
+                                <td className="px-3 py-2">
+                                  <span>{s.screen}</span>
+                                  <span className="text-xs text-muted-foreground"> · {s.key}</span>
+                                  {(s as any).custom && (
+                                    <Badge className="ml-1.5 text-[9px] bg-info/15 text-info hover:bg-info/15 h-4 px-1">Custom</Badge>
+                                  )}
+                                </td>
                                 {ACTIONS.map((a) => {
                                   const checked = (selected.permissions[s.key] ?? []).includes(a);
                                   return (
@@ -332,6 +420,19 @@ export function RbacPage() {
                                     </td>
                                   );
                                 })}
+                                <td className="px-1 py-2 text-center">
+                                  {(s as any).custom && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-6 text-destructive hover:bg-destructive/10"
+                                      onClick={() => removeCustomPermission(s.key)}
+                                      title="Remove custom permission"
+                                    >
+                                      <Trash2 className="size-3" />
+                                    </Button>
+                                  )}
+                                </td>
                               </tr>
                             ))}
                           </>
@@ -339,12 +440,67 @@ export function RbacPage() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Add Custom Permission inline form */}
+                  {addPermOpen ? (
+                    <div className="mt-3 border rounded-lg p-4 bg-muted/20 space-y-3">
+                      <div className="text-sm font-medium flex items-center gap-2">
+                        <Lock className="size-3.5 text-primary" /> Add New Permission
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Module</Label>
+                          <Input
+                            value={newPermModule}
+                            onChange={(e) => setNewPermModule(e.target.value)}
+                            placeholder="e.g. Radiology"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Screen Name</Label>
+                          <Input
+                            value={newPermScreen}
+                            onChange={(e) => setNewPermScreen(e.target.value)}
+                            placeholder="e.g. DICOM Viewer"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Permission Key (auto-generated if blank)</Label>
+                          <Input
+                            value={newPermKey}
+                            onChange={(e) => setNewPermKey(e.target.value)}
+                            placeholder="e.g. radiology.dicom"
+                            className="h-8 text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setAddPermOpen(false)}>Cancel</Button>
+                        <Button size="sm" onClick={addCustomPermission}>
+                          <Plus className="size-3.5 mr-1" /> Add Permission
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 w-full border-dashed text-muted-foreground hover:text-foreground"
+                      onClick={() => setAddPermOpen(true)}
+                    >
+                      <Plus className="size-3.5 mr-1.5" /> Add New Permission
+                    </Button>
+                  )}
                 </TabsContent>
-                <TabsContent value="json" className="mt-4">
-                  <pre className="bg-muted/40 rounded-md p-4 text-xs overflow-x-auto max-h-[480px]">
+                {isSuperAdmin && (
+                  <TabsContent value="json" className="mt-4">
+                    <pre className="bg-muted/40 rounded-md p-4 text-xs overflow-x-auto max-h-[480px]">
 {JSON.stringify({ role: selected.name, scope: selected.scope, organization_id: selected.organization_id, clinic_id: selected.clinic_id, permissions: selected.permissions }, null, 2)}
-                  </pre>
-                </TabsContent>
+                    </pre>
+                  </TabsContent>
+                )}
               </Tabs>
             </CardContent>
           </Card>
@@ -361,6 +517,11 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
   const [orgId, setOrgId] = useState<string>(initial?.organization_id ?? currentUser.organization_id);
   const [clinicId, setClinicId] = useState<string>(initial?.clinic_id ?? currentUser.clinic_id);
   const [permissions, setPermissions] = useState<Record<string, Action[]>>(initial?.permissions ?? {});
+  const [customDialogScreens, setCustomDialogScreens] = useState<{ module: string; screen: string; key: string }[]>([]);
+  const [addRowOpen, setAddRowOpen] = useState(false);
+  const [newRowModule, setNewRowModule] = useState("");
+  const [newRowScreen, setNewRowScreen] = useState("");
+  const [newRowKey, setNewRowKey] = useState("");
 
   // Update form states if initial changes (e.g. edit/clone targets load)
   useEffect(() => {
@@ -370,7 +531,32 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
     setOrgId(initial?.organization_id ?? currentUser.organization_id);
     setClinicId(initial?.clinic_id ?? currentUser.clinic_id);
     setPermissions(initial?.permissions ?? {});
+    setCustomDialogScreens([]);
   }, [initial]);
+
+  const addDialogPermission = () => {
+    const key = newRowKey.trim() || `${newRowModule.toLowerCase().replace(/\s+/g, ".")}.${newRowScreen.toLowerCase().replace(/\s+/g, "_")}`;
+    if (!newRowModule.trim() || !newRowScreen.trim()) {
+      toast.error("Module and Screen name are required");
+      return;
+    }
+    if (SCREENS.some((s) => s.key === key) || customDialogScreens.some((s) => s.key === key)) {
+      toast.error(`Permission key "${key}" already exists`);
+      return;
+    }
+    setCustomDialogScreens((prev) => [...prev, { module: newRowModule.trim(), screen: newRowScreen.trim(), key }]);
+    setNewRowModule("");
+    setNewRowScreen("");
+    setNewRowKey("");
+    setAddRowOpen(false);
+    toast.success(`Permission "${key}" added to role`);
+  };
+
+  const removeDialogPermission = (key: string) => {
+    setCustomDialogScreens((prev) => prev.filter((p) => p.key !== key));
+    const { [key]: _, ...rest } = permissions;
+    setPermissions(rest);
+  };
 
   const toggleLocalPermission = (screenKey: string, action: Action) => {
     const current = permissions[screenKey] ?? [];
@@ -417,40 +603,22 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
             <Label>Description</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this role can do…" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label>Scope</Label>
-              <Select value={scope} onValueChange={(v) => setScope(v as RoleScope)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="platform">Platform</SelectItem>
-                  <SelectItem value="organization">Organization</SelectItem>
-                  <SelectItem value="clinic">Clinic</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="flex items-center gap-2.5 p-3.5 border rounded-lg bg-muted/20">
+            <Checkbox
+              id="clinic-scope"
+              checked={scope === "clinic"}
+              onCheckedChange={(checked) => {
+                setScope(checked ? "clinic" : "organization");
+              }}
+            />
+            <div className="grid gap-1">
+              <Label htmlFor="clinic-scope" className="text-xs font-bold cursor-pointer">
+                Scope this role strictly to current Clinic branch
+              </Label>
+              <p className="text-[10px] text-muted-foreground">
+                If checked, permissions apply only within your active clinic branch. If unchecked, the role acts as a global organization-level template.
+              </p>
             </div>
-            {scope !== "platform" && (
-              <div className="space-y-1.5">
-                <Label>Organization</Label>
-                <Select value={orgId} onValueChange={setOrgId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {organizations.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {scope === "clinic" && (
-              <div className="space-y-1.5">
-                <Label>Clinic</Label>
-                <Select value={clinicId} onValueChange={setClinicId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {clinics.filter((c) => c.organization_id === orgId).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
         </TabsContent>
 
@@ -461,9 +629,11 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
                 <tr className="border-b">
                   <th className="text-left px-3 py-2 font-medium bg-card">Module / Screen</th>
                   {ACTIONS.map((a) => <th key={a} className="px-2 py-2 capitalize font-medium bg-card">{a}</th>)}
+                  <th className="w-8 bg-card" />
                 </tr>
               </thead>
               <tbody>
+                {/* Built-in screens */}
                 {SCREENS.map((s) => (
                   <tr key={s.key} className="border-t">
                     <td className="px-3 py-2">
@@ -478,11 +648,80 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
                         </td>
                       );
                     })}
+                    <td />
+                  </tr>
+                ))}
+                {/* Custom screens */}
+                {customDialogScreens.map((s) => (
+                  <tr key={s.key} className="border-t bg-info/5">
+                    <td className="px-3 py-2">
+                      <div className="font-medium text-xs flex items-center gap-1.5">
+                        {s.screen}
+                        <Badge className="text-[9px] bg-info/15 text-info hover:bg-info/15 h-4 px-1">Custom</Badge>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">{s.module} · {s.key}</div>
+                    </td>
+                    {ACTIONS.map((a) => {
+                      const checked = (permissions[s.key] ?? []).includes(a);
+                      return (
+                        <td key={a} className="px-2 py-2 text-center">
+                          <Checkbox checked={checked} onCheckedChange={() => toggleLocalPermission(s.key, a)} />
+                        </td>
+                      );
+                    })}
+                    <td className="px-1 text-center">
+                      <Button
+                        variant="ghost" size="icon"
+                        className="size-6 text-destructive hover:bg-destructive/10"
+                        onClick={() => removeDialogPermission(s.key)}
+                        title="Remove custom permission"
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Add custom permission row */}
+          {addRowOpen ? (
+            <div className="border rounded-lg p-3 bg-muted/20 space-y-3">
+              <div className="text-xs font-semibold flex items-center gap-2 text-primary">
+                <Lock className="size-3.5" /> New Custom Permission
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Module</Label>
+                  <Input value={newRowModule} onChange={(e) => setNewRowModule(e.target.value)} placeholder="e.g. Radiology" className="h-7 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Screen Name</Label>
+                  <Input value={newRowScreen} onChange={(e) => setNewRowScreen(e.target.value)} placeholder="e.g. DICOM Viewer" className="h-7 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Key (auto if blank)</Label>
+                  <Input value={newRowKey} onChange={(e) => setNewRowKey(e.target.value)} placeholder="e.g. radiology.dicom" className="h-7 text-xs font-mono" />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAddRowOpen(false)}>Cancel</Button>
+                <Button size="sm" className="h-7 text-xs" onClick={addDialogPermission}>
+                  <Plus className="size-3 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-dashed text-muted-foreground hover:text-foreground"
+              onClick={() => setAddRowOpen(true)}
+            >
+              <Plus className="size-3.5 mr-1.5" /> Add New Permission
+            </Button>
+          )}
         </TabsContent>
       </Tabs>
 

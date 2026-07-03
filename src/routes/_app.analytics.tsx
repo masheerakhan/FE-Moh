@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { analyticsApi } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/analytics")({
-  head: () => ({ meta: [{ title: "Analytics — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Analytics — MOH CLINICS" }] }),
   component: Analytics,
 });
 

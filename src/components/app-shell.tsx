@@ -1,18 +1,20 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import {
   Bell, Search, Stethoscope, Users, Calendar, FileText, Receipt,
   Pill, FlaskConical, Video, Bot, Mic, Brain, HeartPulse, BarChart3,
   Building2, ShieldCheck, LayoutDashboard, UserRound, Sparkles,
-  Palette, CreditCard, KeyRound, Crown,
-  Flag,
+  Palette, CreditCard, KeyRound, Crown, Flag, RefreshCw, Key
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import mohLogo from "@/assets/moh-logo.png.asset.json";
+import { currentUser as defaultUser } from "@/lib/tenant-context";
 
-
-const nav = [
+// Definition of all possible system navigation paths
+const navGroups = [
   { group: "Overview", items: [
     { to: "/", label: "Command Center", icon: LayoutDashboard },
     { to: "/clinics", label: "Multi-clinic", icon: Building2 },
@@ -32,6 +34,7 @@ const nav = [
   ]},
   { group: "Patient", items: [
     { to: "/patient", label: "Patient App", icon: UserRound },
+    { to: "/patient-widget", label: "Patient Snapshot", icon: UserRound },
   ]},
   { group: "Enterprise", items: [
     { to: "/admin/super", label: "Super Admin", icon: Crown },
@@ -52,10 +55,160 @@ const nav = [
   ]},
 ];
 
+// Mock database of users by role for demo login switching
+const SYSTEM_MOCK_USERS = [
+  {
+    id: "user_riya",
+    name: "Dr. Riya Iyer",
+    email: "riya.iyer@helix.health",
+    organization_id: "org_apollo",
+    clinic_id: "clinic_bandra",
+    role: "Clinic Admin",
+    specialization: "Clinic Director"
+  },
+  {
+    id: "user_anita",
+    name: "Nurse Anita Sen",
+    email: "anita.sen@helix.health",
+    organization_id: "org_apollo",
+    clinic_id: "clinic_bandra",
+    role: "Receptionist",
+    specialization: "Front Desk Supervisor"
+  },
+  {
+    id: "user_amit",
+    name: "Dr. Amit Sharma",
+    email: "amit.sharma@helix.health",
+    organization_id: "org_apollo",
+    clinic_id: "clinic_bandra",
+    role: "Doctor",
+    specialization: "General Medicine"
+  },
+  {
+    id: "user_pallavi",
+    name: "Pallavi Sarbahi",
+    email: "pallavi.sarbahi@gmail.com",
+    organization_id: "org_apollo",
+    clinic_id: "clinic_bandra",
+    role: "Patient",
+    specialization: "Outpatient"
+  }
+];
+
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+
+  const [activeUser, setActiveUser] = useState(() => {
+    const saved = localStorage.getItem("active_user");
+    return saved ? JSON.parse(saved) : defaultUser;
+  });
+
+  // Handle active user switching
+  const handleUserSwitch = (userId: string) => {
+    const targetUser = SYSTEM_MOCK_USERS.find((u) => u.id === userId);
+    if (!targetUser) return;
+    
+    // Save to localStorage and dispatch event to trigger Route Guard updates
+    localStorage.setItem("active_user", JSON.stringify(targetUser));
+    setActiveUser(targetUser);
+    window.dispatchEvent(new Event("storage_user_change"));
+
+    toast.success("Role Switched Successfully", {
+      description: `Logged in as: ${targetUser.name} (${targetUser.role})`
+    });
+
+    // Auto-redirect to appropriate homepage
+    if (targetUser.role === "Patient") {
+      navigate({ to: "/patient" });
+    } else if (targetUser.role === "Receptionist") {
+      navigate({ to: "/reception" });
+    } else if (targetUser.role === "Doctor") {
+      navigate({ to: "/doctor" });
+    } else if (targetUser.role === "Organization Admin") {
+      navigate({ to: "/admin/org" });
+    } else if (targetUser.role === "Super Admin") {
+      navigate({ to: "/admin/super" });
+    } else {
+      navigate({ to: "/" });
+    }
+  };
+
+  const hasPermission = (permCode: string): boolean => {
+    const role = activeUser.role?.toLowerCase() || "";
+    if (role === "super admin" || role === "superadmin") return true;
+    const userPerms = activeUser.permissions || [];
+    return userPerms.includes(permCode);
+  };
+
+  // Filter navigation sidebar based on current user role permissions
+  const filteredNav = navGroups.map((group) => {
+    const filteredItems = group.items.filter((item) => {
+      const role = activeUser.role?.toLowerCase() || "";
+      
+      // Super Admin only routes
+      if (["/admin/super", "/whitelabel", "/subscriptions", "/admin/features"].includes(item.to)) {
+        return hasPermission("can_define_rbac_boundaries");
+      }
+      
+      // Org Admin + Super Admin routes
+      if (["/clinics", "/admin/org"].includes(item.to)) {
+        return hasPermission("can_define_rbac_boundaries");
+      }
+
+      if (["/analytics"].includes(item.to)) {
+        return hasPermission("can_view_billing_consolidation");
+      }
+
+      if (["/rbac"].includes(item.to)) {
+        return hasPermission("can_manage_clinic_rbac");
+      }
+      
+      // Clinic Admin + Org Admin + Super Admin routes
+      if (["/admin/clinic"].includes(item.to)) {
+        return hasPermission("can_manage_clinic_rbac");
+      }
+      
+      // Front Desk / Receptionist routes
+      if (["/reception"].includes(item.to)) {
+        return hasPermission("can_manage_patients");
+      }
+
+      if (["/appointments"].includes(item.to)) {
+        return hasPermission("can_schedule_appointments");
+      }
+
+      if (["/billing"].includes(item.to)) {
+        return hasPermission("can_issue_gst_invoices");
+      }
+      
+      // Doctor / Clinical routes
+      if (["/doctor", "/emr", "/telemedicine"].includes(item.to)) {
+        return hasPermission("can_parse_vitals") || role === "doctor";
+      }
+
+      if (["/lab", "/pharmacy"].includes(item.to)) {
+        return hasPermission("can_paste_unstructured_labs");
+      }
+
+      if (item.to.startsWith("/ai/")) {
+        return hasPermission("can_parse_vitals") || role === "doctor" || role === "clinic admin" || role === "organization admin";
+      }
+      
+      // Patient routes
+      if (["/patient", "/patient-widget"].includes(item.to)) {
+        return role === "patient" || ["super admin", "superadmin", "organization admin", "clinic admin", "receptionist", "doctor"].includes(role);
+      }
+      
+      return true;
+    });
+
+    return { ...group, items: filteredItems };
+  }).filter((group) => group.items.length > 0);
+
   return (
     <div className="min-h-screen bg-background text-foreground flex">
+      {/* Sidebar navigation */}
       <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
         <div className="px-4 py-4 border-b border-sidebar-border">
           <div className="bg-white rounded-lg p-2 flex items-center justify-center">
@@ -66,7 +219,7 @@ export function AppShell() {
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-          {nav.map((g) => (
+          {filteredNav.map((g) => (
             <div key={g.group}>
               <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">{g.group}</div>
               <div className="space-y-0.5">
@@ -86,32 +239,76 @@ export function AppShell() {
             </div>
           ))}
         </nav>
-        <div className="p-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60">
-          HIPAA • DPDP • HL7/FHIR • SOC2
+        <div className="p-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60 flex items-center justify-between">
+          <span>HIPAA • DPDP • SOC2</span>
+          <Badge variant="outline" className="text-[9px] h-4 bg-primary/10 text-primary uppercase border-primary/20">
+            {activeUser.role.split(" ")[0]}
+          </Badge>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-card/80 backdrop-blur flex items-center px-4 gap-3 sticky top-0 z-10">
-          <div className="relative flex-1 max-w-xl">
+        {/* Top Header */}
+        <header className="h-14 border-b bg-card/80 backdrop-blur flex items-center px-4 gap-3 justify-between sticky top-0 z-10">
+          <div className="relative flex-1 max-w-md">
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search patients, MRN, drugs, ICD-10…" className="pl-9 h-9 bg-muted/40 border-transparent focus-visible:bg-card" />
+            <Input placeholder="Search patients, MRN, clinics, records..." className="pl-9 h-9 bg-muted/40 border-transparent focus-visible:bg-card text-xs" />
           </div>
-          <Badge variant="outline" className="hidden md:inline-flex gap-1 border-success/40 text-success">
-            <span className="size-1.5 rounded-full bg-success" /> All systems nominal
-          </Badge>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="size-4" />
-            <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-destructive" />
-          </Button>
-          <div className="flex items-center gap-2 pl-2 border-l">
-            <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-xs font-semibold">DR</div>
-            <div className="hidden sm:block text-xs leading-tight">
-              <div className="font-medium">Dr. Riya Iyer</div>
-              <div className="text-muted-foreground">Internal Medicine</div>
+          
+          <div className="flex items-center gap-2">
+            {/* Real-time Dynamic Role Switcher Dropdown */}
+            <div className="flex items-center gap-1.5 border bg-muted/20 px-2 py-1 rounded-md text-xs font-semibold mr-2">
+              <Key className="size-3.5 text-primary" />
+              <label htmlFor="role-select" className="text-muted-foreground mr-1 text-[11px]">Role Switcher:</label>
+              <select
+                id="role-select"
+                value={activeUser.id}
+                onChange={(e) => handleUserSwitch(e.target.value)}
+                className="bg-transparent border-0 font-bold focus:ring-0 cursor-pointer text-xs"
+              >
+                {SYSTEM_MOCK_USERS.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Badge variant="outline" className="hidden md:inline-flex gap-1 border-success/40 text-success bg-success/5 text-[10px]">
+              <span className="size-1.5 rounded-full bg-success" /> Nominals active
+            </Badge>
+
+            <Button variant="ghost" size="icon" className="relative size-8">
+              <Bell className="size-4" />
+              <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-destructive" />
+            </Button>
+            
+            <div className="flex items-center gap-2 pl-2 border-l">
+              <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-xs font-semibold">
+                {activeUser.name.split(" ").slice(-1)[0].slice(0, 2).toUpperCase()}
+              </div>
+              <div className="hidden sm:block text-[11px] leading-tight">
+                <div className="font-semibold text-foreground">{activeUser.name}</div>
+                <div className="text-muted-foreground">{activeUser.specialization || "Clinical Staff"}</div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[10px] text-destructive hover:bg-destructive/10 h-7 px-2 ml-1"
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("active_user");
+                  toast.success("Logged out successfully");
+                  navigate({ to: "/login" });
+                }}
+              >
+                Logout
+              </Button>
             </div>
           </div>
         </header>
+
+        {/* Main Content Layout */}
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
@@ -122,10 +319,10 @@ export function AppShell() {
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 mb-6">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{subtitle}</p>}
+        <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
     </div>

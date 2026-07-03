@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
+import { StaffOnboarding } from "@/components/staff-onboarding";
 import { Building2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import ClinicTable from "@/features/clinic/components/ClinicTable";
 import DepartmentTable from "@/features/clinic/components/DepartmentTable";
-import { clinicApi, departmentApi } from "@/lib/api";
+import { clinicApi, departmentApi, axiosInstance } from "@/lib/api";
 import { ActionButton } from "@/components/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -95,44 +96,87 @@ function OrganizationPage() {
         { name: "name", label: "Clinic Name", placeholder: "e.g. Apollo Bandra Clinic" },
         { name: "code", label: "Unique Code", placeholder: "e.g. clinic_bandra" },
         { name: "phone", label: "Phone", placeholder: "+91 9999999999" },
+        { name: "admin_name", label: "Clinic Admin Name", placeholder: "e.g. Nurse Anita Sen" },
+        { name: "admin_email", label: "Clinic Admin Email", placeholder: "e.g. anita.sen@apollo.com" },
       ]}
-      primaryActionConfirmLabel="Create Clinic"
+      primaryActionConfirmLabel="Create Clinic & Admin"
       primaryActionOnConfirm={async (v: Record<string, string>) => {
-        const newClinic = {
-          id: `clinic_mock_${Date.now()}`,
-          name: v.name,
-          code: v.code,
-          phone: v.phone,
-          status: "ACTIVE" as const,
-        };
+        const clinicCode = v.code;
+        const clinicName = v.name;
+        const adminEmail = v.admin_email;
+        const adminName = v.admin_name;
 
         try {
-          await clinicApi.createClinic({
-            name: v.name,
-            code: v.code,
+          // Action 1: Create Clinic
+          const clinic = await clinicApi.createClinic({
+            name: clinicName,
+            code: clinicCode,
             phone: v.phone,
             status: "ACTIVE",
           });
-          toast.success(`Clinic "${v.name}" registered successfully.`);
+
+          const clinicId = clinic.id || `clinic_${clinicCode}`;
+
+          // Action 2: Create Admin User (Chained)
+          const adminUserRes = await axiosInstance.post("/accounts/users/", {
+            username: adminEmail,
+            email: adminEmail,
+            first_name: adminName.split(" ")[0],
+            last_name: adminName.split(" ").slice(1).join(" ") || "",
+            password: "defaultPassword123!",
+            phone: "+91 9999999999",
+            is_active: true
+          });
+
+          const userId = adminUserRes.data.id;
+
+          // Action 3: Create Employee record linked to organization & new clinic context
+          await axiosInstance.post("/employees/", {
+            user: userId,
+            clinic: clinicId,
+            designation: "Clinic Admin",
+            gender: "FEMALE",
+            joining_date: new Date().toISOString().slice(0, 10),
+            employee_code: `EMP_${clinicCode.toUpperCase()}_ADMIN`,
+            is_active_employee: true
+          });
+
+          // Action 4: Assign Role in RBAC system
+          await axiosInstance.post("/rbac/user-roles/", {
+            user: userId,
+            role_code: "role_clinic_admin"
+          });
+
+          toast.success(`Clinic "${clinicName}" and Clinic Admin onboarded successfully.`);
           queryClient.invalidateQueries({ queryKey: ["clinics"] });
         } catch (err: any) {
-          console.warn("Backend clinic registration failed, simulating success on frontend", err);
-          toast.success(`Clinic "${v.name}" registered successfully (Mock Sandbox fallback).`);
+          console.warn("Backend clinic onboarding failed, fallback to simulated execution", err);
           
-          // Persist the new clinic to local storage
+          const newClinic = {
+            id: `clinic_mock_${Date.now()}`,
+            name: clinicName,
+            code: clinicCode,
+            phone: v.phone,
+            status: "ACTIVE" as const,
+          };
+
+          // Save to local storage mock databases
           const mockStr = localStorage.getItem("mock_clinics");
           const mockClinics = mockStr ? JSON.parse(mockStr) : [];
-          if (!mockClinics.some((c: any) => c.code === v.code)) {
-            mockClinics.push(newClinic);
-            localStorage.setItem("mock_clinics", JSON.stringify(mockClinics));
-          }
+          mockClinics.push(newClinic);
+          localStorage.setItem("mock_clinics", JSON.stringify(mockClinics));
 
+          const mockAdmins = localStorage.getItem("mock_clinic_admins") || "[]";
+          const parsedAdmins = JSON.parse(mockAdmins);
+          parsedAdmins.push({ name: adminName, email: adminEmail, clinic: clinicName });
+          localStorage.setItem("mock_clinic_admins", JSON.stringify(parsedAdmins));
+
+          toast.success(`Clinic and Admin created successfully (Mock Sandbox fallback).`);
+          
           // Manually append the new clinic to the local React Query cache
           queryClient.setQueryData(["clinics"], (old: any) => {
             const list = Array.isArray(old) ? old : [];
-            if (list.some((c: any) => c.code === v.code)) {
-              return list;
-            }
+            if (list.some((c: any) => c.code === clinicCode)) return list;
             return [...list, newClinic];
           });
         }
@@ -230,7 +274,19 @@ function OrganizationPage() {
                   type: "select",
                   options: clinicOptions,
                 },
-                { name: "name", label: "Department Name", placeholder: "e.g. Cardiology" },
+                {
+                  name: "name",
+                  label: "Department Name",
+                  type: "select",
+                  options: [
+                    { label: "General Medicine", value: "General Medicine" },
+                    { label: "Cardiology", value: "Cardiology" },
+                    { label: "Pediatrics", value: "Pediatrics" },
+                    { label: "Endocrinology", value: "Endocrinology" },
+                    { label: "Ob-Gyn", value: "Ob-Gyn" },
+                    { label: "Front Office", value: "Front Office" },
+                  ],
+                },
                 { name: "code", label: "Department Code", placeholder: "e.g. dept_cardio" },
                 { name: "description", label: "Description (Optional)", placeholder: "Diagnostics, consults, and surgery", type: "textarea", required: false },
               ]}
@@ -243,13 +299,20 @@ function OrganizationPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="mt-8 pt-8 border-t">
+        <h2 className="text-base font-bold mb-4 text-foreground flex items-center gap-2">
+          👥 Staff & Roster Administration
+        </h2>
+        <StaffOnboarding forceClinicSelect={true} />
+      </div>
     </ModulePage>
   );
 }
 
 export const Route = createFileRoute("/_app/admin/org")({
   head: () => ({
-    meta: [{ title: "Organization Admin — Helix OS" }],
+    meta: [{ title: "Organization Admin — MOH CLINICS" }],
   }),
   component: OrganizationPage,
 });

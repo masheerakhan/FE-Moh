@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
+import { StaffOnboarding } from "@/components/staff-onboarding";
 import { LayoutDashboard, Users, Calendar, Pill, Plus, Trash2, Clock, CheckCircle2, AlertTriangle, RefreshCcw, TrendingUp, Download, IndianRupee } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -10,7 +11,7 @@ import { ActionButton } from "@/components/action-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/admin/clinic")({
-  head: () => ({ meta: [{ title: "Clinic Admin — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Clinic Admin — MOH CLINICS" }] }),
   component: ClinicAdminPage,
 });
 
@@ -765,6 +766,13 @@ function ClinicAdminPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mt-8 pt-8 border-t">
+        <h2 className="text-base font-bold mb-4 text-foreground flex items-center gap-2">
+          👥 Staff & Roster Administration
+        </h2>
+        <StaffOnboarding />
       </div>
     </ModulePage>
   );

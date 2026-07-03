@@ -7,21 +7,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileUp } from "lucide-react";
+import { Plus, Trash2, FileUp, ClipboardList } from "lucide-react";
 import { labOrders as defaultLabOrders } from "@/lib/mock-data";
 import { ActionButton } from "@/components/action-button";
 import { labApi, patientApi } from "@/lib/api";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/lab")({
-  head: () => ({ meta: [{ title: "Lab — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "Lab — MOH CLINICS" }] }),
   component: Lab,
 });
 
 function Lab() {
   const [items, setItems] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [resultEntry, setResultEntry] = useState<{ id: string; orderNo: string; panel: string } | null>(null);
+  const [resultText, setResultText] = useState("");
   const [draft, setDraft] = useState({ patient: "", panel: "", status: "Pending" as "Pending" | "Processing" | "Ready" });
 
   const refreshOrders = async () => {
@@ -219,9 +224,48 @@ function Lab() {
         }
       />
 
+      {/* Result Entry Dialog */}
+      {resultEntry && (
+        <Dialog open={!!resultEntry} onOpenChange={() => setResultEntry(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enter Results — {resultEntry.panel}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">Order: {resultEntry.orderNo}</div>
+              <Label>Lab Values / Observations</Label>
+              <Textarea
+                value={resultText}
+                onChange={(e) => setResultText(e.target.value)}
+                placeholder="e.g. HbA1c: 7.2% (Ref: &lt;5.7%) | Lipid: LDL 142 mg/dL | RFT: Creatinine 0.9"
+                className="min-h-28"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResultEntry(null)}>Cancel</Button>
+              <Button onClick={() => {
+                toast.success(`Results entered for ${resultEntry.orderNo}`, {
+                  description: resultText.slice(0, 80),
+                });
+                setResultEntry(null);
+                setResultText("");
+              }}>Save Results</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Today's orders</CardTitle>
+          <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+            <TabsList className="h-8">
+              <TabsTrigger value="All" className="text-xs h-7 px-2.5">All ({items.length})</TabsTrigger>
+              <TabsTrigger value="Pending" className="text-xs h-7 px-2.5">Pending ({items.filter(i => i.status === "Pending").length})</TabsTrigger>
+              <TabsTrigger value="Processing" className="text-xs h-7 px-2.5">Processing ({items.filter(i => i.status === "Processing").length})</TabsTrigger>
+              <TabsTrigger value="Ready" className="text-xs h-7 px-2.5">Ready ({items.filter(i => i.status === "Ready").length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y text-sm">
@@ -232,7 +276,9 @@ function Lab() {
               <div>Status</div>
               <div className="text-right">Actions</div>
             </div>
-            {items.map((o) => (
+            {(() => {
+              const filtered = statusFilter === "All" ? items : items.filter(o => o.status === statusFilter);
+              return filtered.map((o) => (
               <div key={o.id} className="grid grid-cols-7 px-6 py-3 items-center">
                 <div className="font-mono text-xs">{o.orderNo}</div>
                 <div className="col-span-2 font-medium">{o.patient}</div>
@@ -254,6 +300,18 @@ function Lab() {
                   </Badge>
                 </div>
                 <div className="text-right flex justify-end items-center gap-1.5">
+                  {/* Enter Results button for Ready orders */}
+                  {o.status === "Ready" && (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 text-success border-success/30"
+                      title="Enter results"
+                      onClick={() => setResultEntry({ id: o.id, orderNo: o.orderNo, panel: o.panel })}
+                    >
+                      <ClipboardList className="size-3.5" />
+                    </Button>
+                  )}
                   <div className="relative cursor-pointer">
                     <input
                       type="file"
@@ -285,7 +343,9 @@ function Lab() {
                   </Button>
                 </div>
               </div>
-            ))}
+            ));
+            })()
+            }
           </div>
         </CardContent>
       </Card>

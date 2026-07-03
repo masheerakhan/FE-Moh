@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppWhitelabelRouteImport } from './routes/_app.whitelabel'
@@ -17,6 +18,7 @@ import { Route as AppSubscriptionsRouteImport } from './routes/_app.subscription
 import { Route as AppReceptionRouteImport } from './routes/_app.reception'
 import { Route as AppRbacRouteImport } from './routes/_app.rbac'
 import { Route as AppPharmacyRouteImport } from './routes/_app.pharmacy'
+import { Route as AppPatientWidgetRouteImport } from './routes/_app.patient-widget'
 import { Route as AppPatientRouteImport } from './routes/_app.patient'
 import { Route as AppLabRouteImport } from './routes/_app.lab'
 import { Route as AppEmrRouteImport } from './routes/_app.emr'
@@ -36,6 +38,11 @@ import { Route as AppAdminOrgRouteImport } from './routes/_app.admin.org'
 import { Route as AppAdminFeaturesRouteImport } from './routes/_app.admin.features'
 import { Route as AppAdminClinicRouteImport } from './routes/_app.admin.clinic'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -73,6 +80,11 @@ const AppRbacRoute = AppRbacRouteImport.update({
 const AppPharmacyRoute = AppPharmacyRouteImport.update({
   id: '/pharmacy',
   path: '/pharmacy',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientWidgetRoute = AppPatientWidgetRouteImport.update({
+  id: '/patient-widget',
+  path: '/patient-widget',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPatientRoute = AppPatientRouteImport.update({
@@ -168,6 +180,7 @@ const AppAdminClinicRoute = AppAdminClinicRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
   '/analytics': typeof AppAnalyticsRoute
   '/appointments': typeof AppAppointmentsRoute
   '/billing': typeof AppBillingRoute
@@ -176,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/emr': typeof AppEmrRoute
   '/lab': typeof AppLabRoute
   '/patient': typeof AppPatientRoute
+  '/patient-widget': typeof AppPatientWidgetRoute
   '/pharmacy': typeof AppPharmacyRoute
   '/rbac': typeof AppRbacRoute
   '/reception': typeof AppReceptionRoute
@@ -194,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/ai/scribe': typeof AppAiScribeRoute
 }
 export interface FileRoutesByTo {
+  '/login': typeof LoginRoute
   '/analytics': typeof AppAnalyticsRoute
   '/appointments': typeof AppAppointmentsRoute
   '/billing': typeof AppBillingRoute
@@ -202,6 +217,7 @@ export interface FileRoutesByTo {
   '/emr': typeof AppEmrRoute
   '/lab': typeof AppLabRoute
   '/patient': typeof AppPatientRoute
+  '/patient-widget': typeof AppPatientWidgetRoute
   '/pharmacy': typeof AppPharmacyRoute
   '/rbac': typeof AppRbacRoute
   '/reception': typeof AppReceptionRoute
@@ -223,6 +239,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/appointments': typeof AppAppointmentsRoute
   '/_app/billing': typeof AppBillingRoute
@@ -231,6 +248,7 @@ export interface FileRoutesById {
   '/_app/emr': typeof AppEmrRoute
   '/_app/lab': typeof AppLabRoute
   '/_app/patient': typeof AppPatientRoute
+  '/_app/patient-widget': typeof AppPatientWidgetRoute
   '/_app/pharmacy': typeof AppPharmacyRoute
   '/_app/rbac': typeof AppRbacRoute
   '/_app/reception': typeof AppReceptionRoute
@@ -253,6 +271,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/analytics'
     | '/appointments'
     | '/billing'
@@ -261,6 +280,7 @@ export interface FileRouteTypes {
     | '/emr'
     | '/lab'
     | '/patient'
+    | '/patient-widget'
     | '/pharmacy'
     | '/rbac'
     | '/reception'
@@ -279,6 +299,7 @@ export interface FileRouteTypes {
     | '/ai/scribe'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/login'
     | '/analytics'
     | '/appointments'
     | '/billing'
@@ -287,6 +308,7 @@ export interface FileRouteTypes {
     | '/emr'
     | '/lab'
     | '/patient'
+    | '/patient-widget'
     | '/pharmacy'
     | '/rbac'
     | '/reception'
@@ -307,6 +329,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/login'
     | '/_app/analytics'
     | '/_app/appointments'
     | '/_app/billing'
@@ -315,6 +338,7 @@ export interface FileRouteTypes {
     | '/_app/emr'
     | '/_app/lab'
     | '/_app/patient'
+    | '/_app/patient-widget'
     | '/_app/pharmacy'
     | '/_app/rbac'
     | '/_app/reception'
@@ -336,10 +360,18 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -394,6 +426,13 @@ declare module '@tanstack/react-router' {
       path: '/pharmacy'
       fullPath: '/pharmacy'
       preLoaderRoute: typeof AppPharmacyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/patient-widget': {
+      id: '/_app/patient-widget'
+      path: '/patient-widget'
+      fullPath: '/patient-widget'
+      preLoaderRoute: typeof AppPatientWidgetRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/patient': {
@@ -534,6 +573,7 @@ interface AppRouteChildren {
   AppEmrRoute: typeof AppEmrRoute
   AppLabRoute: typeof AppLabRoute
   AppPatientRoute: typeof AppPatientRoute
+  AppPatientWidgetRoute: typeof AppPatientWidgetRoute
   AppPharmacyRoute: typeof AppPharmacyRoute
   AppRbacRoute: typeof AppRbacRoute
   AppReceptionRoute: typeof AppReceptionRoute
@@ -562,6 +602,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEmrRoute: AppEmrRoute,
   AppLabRoute: AppLabRoute,
   AppPatientRoute: AppPatientRoute,
+  AppPatientWidgetRoute: AppPatientWidgetRoute,
   AppPharmacyRoute: AppPharmacyRoute,
   AppRbacRoute: AppRbacRoute,
   AppReceptionRoute: AppReceptionRoute,
@@ -585,6 +626,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

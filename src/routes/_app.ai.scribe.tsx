@@ -4,7 +4,7 @@ import { Mic } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/scribe")({
-  head: () => ({ meta: [{ title: "AI Medical Scribe — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "AI Medical Scribe — MOH CLINICS" }] }),
   component: () => (
     <ModulePage title="AI Medical Scribe" icon={Mic} primaryAction="Open live session"
       subtitle="Ambient speech → SOAP notes + ICD-10 / CPT codes + draft prescription, reviewed by clinician."

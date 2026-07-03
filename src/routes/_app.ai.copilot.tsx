@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai/copilot")({
-  head: () => ({ meta: [{ title: "AI Clinical Copilot — Helix OS" }] }),
+  head: () => ({ meta: [{ title: "AI Clinical Copilot — MOH CLINICS" }] }),
   component: () => (
     <ModulePage title="AI Clinical Copilot" icon={Sparkles} primaryAction="Try on a case"
       subtitle="Diagnosis assistance, investigation suggestions, treatment recommendations, drug-interaction & allergy checks."
