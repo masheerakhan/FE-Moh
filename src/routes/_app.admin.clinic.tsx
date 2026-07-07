@@ -127,6 +127,27 @@ const defaultApprovals: ClinicApproval[] = [
 ];
 
 function ClinicAdminPage() {
+  const [activeUser, setActiveUser] = useState(() => {
+    const saved = localStorage.getItem("active_user");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    const handleUserChange = () => {
+      const saved = localStorage.getItem("active_user");
+      if (saved) setActiveUser(JSON.parse(saved));
+    };
+    window.addEventListener("storage_user_change", handleUserChange);
+    return () => window.removeEventListener("storage_user_change", handleUserChange);
+  }, []);
+
+  const hasPermission = (permCode: string): boolean => {
+    if (!activeUser) return false;
+    if (activeUser.role === "Super Admin" || activeUser.role === "SUPERADMIN") return true;
+    const userPerms = activeUser.permissions || [];
+    return userPerms.includes(permCode);
+  };
+
   const [stats, setStats] = useState([
     { label: "Appointments today", value: "318" },
     { label: "Walk-ins", value: "74" },
@@ -768,12 +789,14 @@ function ClinicAdminPage() {
         </Card>
       </div>
 
-      <div className="mt-8 pt-8 border-t">
-        <h2 className="text-base font-bold mb-4 text-foreground flex items-center gap-2">
-          👥 Staff & Roster Administration
-        </h2>
-        <StaffOnboarding />
-      </div>
+      {hasPermission("can_manage_staff_onboarding") && (
+        <div className="mt-8 pt-8 border-t">
+          <h2 className="text-base font-bold mb-4 text-foreground flex items-center gap-2">
+            👥 Staff & Roster Administration
+          </h2>
+          <StaffOnboarding />
+        </div>
+      )}
     </ModulePage>
   );
 }

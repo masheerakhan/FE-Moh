@@ -597,37 +597,43 @@ function Reception() {
               <CardTitle className="text-base font-semibold">Patient Registration & Search</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Tabs defaultValue="register">
+              <Tabs defaultValue={hasAccess("patient.registration", "create") ? "register" : "search"}>
                 <TabsList className="w-full">
-                  <TabsTrigger value="register" className="flex-1">Register</TabsTrigger>
+                  {hasAccess("patient.registration", "create") && (
+                    <TabsTrigger value="register" className="flex-1">Register</TabsTrigger>
+                  )}
                   <TabsTrigger value="search" className="flex-1">Search</TabsTrigger>
-                  <TabsTrigger value="appointment" className="flex-1">Book Apt</TabsTrigger>
+                  {hasAccess("reception.appointments", "create") && (
+                    <TabsTrigger value="appointment" className="flex-1">Book Apt</TabsTrigger>
+                  )}
                 </TabsList>
-                <TabsContent value="register">
-                  <div className="space-y-4 py-6 text-center">
-                    <p className="text-slate-400 text-xs px-2 leading-relaxed">
-                      Launch the clinical onboarding portal to capture demographics, calculate age, verify ABHA, and record vitals.
-                    </p>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          disabled={!hasAccess("patient.registration", "create")}
-                          className="w-full h-10 text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold"
-                        >
-                          Open Registration Wizard
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-950 border-slate-800 p-1 text-white">
-                        <PatientRegistrationForm
-                          onSuccess={() => {
-                            loadPatients();
-                            refreshQueue();
-                          }}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </TabsContent>
+                {hasAccess("patient.registration", "create") && (
+                  <TabsContent value="register">
+                    <div className="space-y-4 py-6 text-center">
+                      <p className="text-slate-400 text-xs px-2 leading-relaxed">
+                        Launch the clinical onboarding portal to capture demographics, calculate age, verify ABHA, and record vitals.
+                      </p>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            disabled={!hasAccess("patient.registration", "create")}
+                            className="w-full h-10 text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold"
+                          >
+                            Open Registration Wizard
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-950 border-slate-800 p-1 text-white">
+                          <PatientRegistrationForm
+                            onSuccess={() => {
+                              loadPatients();
+                              refreshQueue();
+                            }}
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </TabsContent>
+                )}
                 <TabsContent value="search">
                   <div className="space-y-3 pt-2">
                     <div className="relative">
@@ -665,70 +671,72 @@ function Reception() {
                     )}
                   </div>
                 </TabsContent>
-                <TabsContent value="appointment">
-                  <form onSubmit={handleBookAppointment} className="space-y-3 pt-2">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-medium text-muted-foreground">Select Patient</label>
-                      <select
-                        value={bookPatientId}
-                        onChange={(e) => setBookPatientId(e.target.value)}
-                        className="w-full h-9 px-3 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                      >
-                        <option value="">-- Choose Patient --</option>
-                        {patientsList.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.first_name} {p.last_name || ""} ({p.phone || "No phone"})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-medium text-muted-foreground">Select Doctor</label>
-                      <select
-                        value={bookDoctorId}
-                        onChange={(e) => setBookDoctorId(e.target.value)}
-                        className="w-full h-9 px-3 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                      >
-                        <option value="">-- Choose Doctor --</option>
-                        {doctors.map(d => (
-                          <option key={d.id} value={d.id}>
-                            Dr. {d.name} ({d.specialty || "General Medicine"})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
+                {hasAccess("reception.appointments", "create") && (
+                  <TabsContent value="appointment">
+                    <form onSubmit={handleBookAppointment} className="space-y-3 pt-2">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-muted-foreground">Date</label>
-                        <Input
-                          type="date"
-                          value={bookDate}
-                          onChange={(e) => setBookDate(e.target.value)}
-                          className="h-9 text-xs"
-                        />
+                        <label className="text-[11px] font-medium text-muted-foreground">Select Patient</label>
+                        <select
+                          value={bookPatientId}
+                          onChange={(e) => setBookPatientId(e.target.value)}
+                          className="w-full h-9 px-3 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        >
+                          <option value="">-- Choose Patient --</option>
+                          {patientsList.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.first_name} {p.last_name || ""} ({p.phone || "No phone"})
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-muted-foreground">Time</label>
-                        <Input
-                          type="time"
-                          value={bookTime}
-                          onChange={(e) => setBookTime(e.target.value)}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                    </div>
 
-                    <Button
-                      type="submit"
-                      disabled={bookingApt}
-                      className="w-full h-9 mt-4 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
-                    >
-                      {bookingApt ? "Booking..." : "Book Appointment"}
-                    </Button>
-                  </form>
-                </TabsContent>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-medium text-muted-foreground">Select Doctor</label>
+                        <select
+                          value={bookDoctorId}
+                          onChange={(e) => setBookDoctorId(e.target.value)}
+                          className="w-full h-9 px-3 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        >
+                          <option value="">-- Choose Doctor --</option>
+                          {doctors.map(d => (
+                            <option key={d.id} value={d.id}>
+                              Dr. {d.name} ({d.specialty || "General Medicine"})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-medium text-muted-foreground">Date</label>
+                          <Input
+                            type="date"
+                            value={bookDate}
+                            onChange={(e) => setBookDate(e.target.value)}
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-medium text-muted-foreground">Time</label>
+                          <Input
+                            type="time"
+                            value={bookTime}
+                            onChange={(e) => setBookTime(e.target.value)}
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={bookingApt}
+                        className="w-full h-9 mt-4 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                      >
+                        {bookingApt ? "Booking..." : "Book Appointment"}
+                      </Button>
+                    </form>
+                  </TabsContent>
+                )}
               </Tabs>
             </CardContent>
           </Card>

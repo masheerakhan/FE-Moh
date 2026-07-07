@@ -4,7 +4,7 @@ import {
   Bell, Search, Stethoscope, Users, Calendar, FileText, Receipt,
   Pill, FlaskConical, Video, Bot, Mic, Brain, HeartPulse, BarChart3,
   Building2, ShieldCheck, LayoutDashboard, UserRound, Sparkles,
-  Palette, CreditCard, KeyRound, Crown, Flag, RefreshCw, Key
+  Palette, CreditCard, KeyRound, Crown, Flag, RefreshCw, Key, UserPlus
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import mohLogo from "@/assets/moh-logo.png.asset.json";
 import { currentUser as defaultUser } from "@/lib/tenant-context";
+import { useRBAC } from "@/components/rbac-guard";
 
 // Definition of all possible system navigation paths
 const navGroups = [
@@ -28,8 +29,9 @@ const navGroups = [
     { to: "/pharmacy", label: "Pharmacy", icon: Pill },
   ]},
   { group: "Front Desk", items: [
-    { to: "/reception", label: "Reception", icon: Users },
     { to: "/appointments", label: "Appointments", icon: Calendar },
+    { to: "/patient-onboarding", label: "Patient Onboarding", icon: UserPlus },
+    { to: "/reception", label: "Reception", icon: Users },
     { to: "/billing", label: "Billing & Finance", icon: Receipt },
   ]},
   { group: "Patient", items: [
@@ -57,6 +59,24 @@ const navGroups = [
 
 // Mock database of users by role for demo login switching
 const SYSTEM_MOCK_USERS = [
+  {
+    id: "user_super_admin",
+    name: "Super Admin Owner",
+    email: "super.admin@helix.health",
+    organization_id: "org_apollo",
+    clinic_id: null,
+    role: "Super Admin",
+    specialization: "System Controller"
+  },
+  {
+    id: "user_org_admin",
+    name: "Corporate Admin",
+    email: "org.admin@helix.health",
+    organization_id: "org_apollo",
+    clinic_id: null,
+    role: "Organization Admin",
+    specialization: "Corporate Coordinator"
+  },
   {
     id: "user_riya",
     name: "Dr. Riya Iyer",
@@ -98,11 +118,24 @@ const SYSTEM_MOCK_USERS = [
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const { permissions, userContext } = useRBAC();
 
   const [activeUser, setActiveUser] = useState(() => {
     const saved = localStorage.getItem("active_user");
     return saved ? JSON.parse(saved) : defaultUser;
   });
+
+  // Keep state synced with localStorage changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem("active_user");
+      if (saved) {
+        setActiveUser(JSON.parse(saved));
+      }
+    };
+    window.addEventListener("storage_user_change", handleStorageChange);
+    return () => window.removeEventListener("storage_user_change", handleStorageChange);
+  }, []);
 
   // Handle active user switching
   const handleUserSwitch = (userId: string) => {
@@ -110,6 +143,7 @@ export function AppShell() {
     if (!targetUser) return;
     
     // Save to localStorage and dispatch event to trigger Route Guard updates
+    localStorage.setItem("token", `dummy_jwt_token_${targetUser.id}`);
     localStorage.setItem("active_user", JSON.stringify(targetUser));
     setActiveUser(targetUser);
     window.dispatchEvent(new Event("storage_user_change"));
@@ -129,75 +163,120 @@ export function AppShell() {
       navigate({ to: "/admin/org" });
     } else if (targetUser.role === "Super Admin") {
       navigate({ to: "/admin/super" });
+    } else if (targetUser.role === "Clinic Admin") {
+      navigate({ to: "/admin/clinic" });
     } else {
       navigate({ to: "/" });
     }
   };
 
   const hasPermission = (permCode: string): boolean => {
-    const role = activeUser.role?.toLowerCase() || "";
-    if (role === "super admin" || role === "superadmin") return true;
     const userPerms = activeUser.permissions || [];
     return userPerms.includes(permCode);
   };
 
-  // Filter navigation sidebar based on current user role permissions
   const filteredNav = navGroups.map((group) => {
     const filteredItems = group.items.filter((item) => {
-      const role = activeUser.role?.toLowerCase() || "";
-      
+      const role = (userContext?.role || activeUser.role || "").toLowerCase();
+      const userModules = permissions?.modules?.map((m) => m.toLowerCase()) || [];
+
+      // SUPER ADMIN MASTER BYPASS RULE: Super Admin gets unconditional access to all sidebar items
+      if (role === "super admin" || role === "superadmin") {
+        return true;
+      }
+
+      // 1. Patient Profile constraints
+      if (role === "patient") {
+        return ["/patient", "/patient-widget"].includes(item.to);
+      }
+
+      // 2. Receptionist / Clinical Staff constraints
+      if (["receptionist", "clinical staff"].includes(role)) {
+        return ["/reception", "/appointments", "/billing"].includes(item.to);
+      }
+
+      // 2.5. Clinic Admin constraints
+      if (role === "clinic admin" || role === "clinicadmin") {
+        // EMR / Medical Records bypass check
+        if (item.to === "/emr" && (userModules.includes("emr") || userModules.includes("medical_records") || hasPermission("can_parse_vitals"))) {
+          return true;
+        }
+
+        if (["/patient", "/patient-widget", "/reception", "/appointments", "/billing", "/patient-onboarding"].includes(item.to)) {
+          return false;
+        }
+        return ["/", "/clinics", "/admin/clinic", "/analytics", "/rbac"].includes(item.to);
+      }
+
+      // 3. Command Center (root /) constraints
+      if (item.to === "/") {
+        return ["super admin", "superadmin", "organization admin", "clinic admin", "clinicadmin"].includes(role);
+      }
+
+      // 4. Default permission-based gates
+
       // Super Admin only routes
       if (["/admin/super", "/whitelabel", "/subscriptions", "/admin/features"].includes(item.to)) {
-        return hasPermission("can_define_rbac_boundaries");
+        return userModules.includes("admin") || hasPermission("can_define_rbac_boundaries");
       }
       
       // Org Admin + Super Admin routes
       if (["/clinics", "/admin/org"].includes(item.to)) {
-        return hasPermission("can_define_rbac_boundaries");
+        return userModules.includes("admin") || hasPermission("can_define_rbac_boundaries");
       }
 
       if (["/analytics"].includes(item.to)) {
-        return hasPermission("can_view_billing_consolidation");
+        return userModules.includes("analytics") || hasPermission("can_view_billing_consolidation");
       }
 
-      if (["/rbac"].includes(item.to)) {
-        return hasPermission("can_manage_clinic_rbac");
+      if (["/rbac", "/admin/rbac"].includes(item.to)) {
+        return (
+          ["organization admin", "clinic admin", "clinicadmin"].includes(role) ||
+          userModules.includes("rbac") ||
+          hasPermission("can_manage_clinic_rbac")
+        );
       }
       
       // Clinic Admin + Org Admin + Super Admin routes
       if (["/admin/clinic"].includes(item.to)) {
-        return hasPermission("can_manage_clinic_rbac");
+        return userModules.includes("admin") || hasPermission("can_manage_clinic_rbac");
       }
       
       // Front Desk / Receptionist routes
       if (["/reception"].includes(item.to)) {
-        return hasPermission("can_manage_patients");
+        return userModules.includes("reception") || hasPermission("can_manage_patients");
+      }
+
+      if (["/patient-onboarding"].includes(item.to)) {
+        return userModules.includes("reception") || hasPermission("can_manage_patients") || role === "receptionist";
       }
 
       if (["/appointments"].includes(item.to)) {
-        return hasPermission("can_schedule_appointments");
+        return userModules.includes("scheduling") || hasPermission("can_schedule_appointments");
       }
 
       if (["/billing"].includes(item.to)) {
-        return hasPermission("can_issue_gst_invoices");
+        return userModules.includes("billing") || hasPermission("can_issue_gst_invoices");
       }
       
       // Doctor / Clinical routes
       if (["/doctor", "/emr", "/telemedicine"].includes(item.to)) {
-        return hasPermission("can_parse_vitals") || role === "doctor";
+        if (["receptionist", "clinical staff"].includes(role)) return false;
+        return userModules.includes("emr") || hasPermission("can_parse_vitals") || role === "doctor";
       }
 
       if (["/lab", "/pharmacy"].includes(item.to)) {
-        return hasPermission("can_paste_unstructured_labs");
+        return userModules.includes("lab") || userModules.includes("pharmacy") || hasPermission("can_paste_unstructured_labs");
       }
 
       if (item.to.startsWith("/ai/")) {
-        return hasPermission("can_parse_vitals") || role === "doctor" || role === "clinic admin" || role === "organization admin";
+        if (["receptionist", "clinical staff"].includes(role)) return false;
+        return userModules.includes("ai");
       }
       
       // Patient routes
       if (["/patient", "/patient-widget"].includes(item.to)) {
-        return role === "patient" || ["super admin", "superadmin", "organization admin", "clinic admin", "receptionist", "doctor"].includes(role);
+        return ["super admin", "superadmin", "organization admin", "clinic admin", "doctor"].includes(role);
       }
       
       return true;
@@ -221,14 +300,14 @@ export function AppShell() {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
           {filteredNav.map((g) => (
             <div key={g.group}>
-              <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">{g.group}</div>
+              <div className="px-2 mb-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50">{g.group}</div>
               <div className="space-y-0.5">
                 {g.items.map((it) => {
                   const active = pathname === it.to;
                   return (
                     <Link key={it.to} to={it.to}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                        active ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium" : "hover:bg-sidebar-accent text-sidebar-foreground/90"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors sidebar-nav-link ${
+                        active ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" : "hover:bg-sidebar-accent text-sidebar-foreground/90"
                       }`}>
                       <it.icon className="size-4" />
                       {it.label}
@@ -285,11 +364,11 @@ export function AppShell() {
             
             <div className="flex items-center gap-2 pl-2 border-l">
               <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-xs font-semibold">
-                {activeUser.name.split(" ").slice(-1)[0].slice(0, 2).toUpperCase()}
+                {(userContext?.name || activeUser.name).split(" ").slice(-1)[0].slice(0, 2).toUpperCase()}
               </div>
               <div className="hidden sm:block text-[11px] leading-tight">
-                <div className="font-semibold text-foreground">{activeUser.name}</div>
-                <div className="text-muted-foreground">{activeUser.specialization || "Clinical Staff"}</div>
+                <div className="font-semibold text-foreground">{userContext?.name || activeUser.name}</div>
+                <div className="text-muted-foreground">{userContext?.role || activeUser.role}</div>
               </div>
               <Button
                 variant="ghost"

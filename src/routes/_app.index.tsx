@@ -6,6 +6,7 @@ import { kpis, visitsTrend, revenueSplit, aiAgents, todayAppointments } from "@/
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, Legend } from "recharts";
 import { ArrowUpRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { useRBAC } from "@/components/rbac-guard";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "MOH Clinics" }, { name: "description", content: "AI-powered Healthcare Operating System command center." }] }),
@@ -16,6 +17,8 @@ const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--cha
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { userContext } = useRBAC();
+  const role = userContext?.role?.toLowerCase() || "";
 
   const handleStartConsult = () => {
     toast.success("Consultation Workspace starting", {
@@ -54,13 +57,30 @@ function Dashboard() {
     });
   };
 
+  // Filter KPI summary cards based on role profile permissions:
+  // - "Active Patients" (Patient Experience / Health Score): Hide for Doctor, Receptionist, Clinical Staff, Nurse.
+  // - "Revenue (MTD)" (Infrastructure / Financial Metrics): Only visible for Admin profiles.
+  // - "AI Scribe Hours Saved" (Efficiency Metrics): Hide for Receptionist, Clinical Staff.
+  const filteredKpis = kpis.filter((k) => {
+    if (k.label === "Active Patients") {
+      return !["doctor", "receptionist", "clinical staff", "nurse"].includes(role);
+    }
+    if (k.label === "Revenue (MTD)") {
+      return ["super admin", "superadmin", "organization admin", "clinic admin"].includes(role);
+    }
+    if (k.label === "AI Scribe Hours Saved") {
+      return !["receptionist", "clinical staff"].includes(role);
+    }
+    return true;
+  });
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="rounded-2xl p-6 lg:p-8 text-primary-foreground relative overflow-hidden" style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-elegant)" }}>
         <div className="flex items-start justify-between gap-6 relative z-10">
           <div>
             <Badge className="bg-white/15 hover:bg-white/15 text-primary-foreground border-0 mb-3"><Sparkles className="size-3 mr-1" /> AI Layer Active · 6 agents</Badge>
-            <h1 className="text-3xl font-semibold tracking-tight">Good morning, Dr. Iyer.</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Good morning, {userContext?.name || "Dr. Iyer"}.</h1>
             <p className="opacity-90 mt-1 max-w-xl">Your network handled <b>18,432</b> consultations today. AI Scribe drafted <b>14,802</b> SOAP notes — saving an estimated <b>1,230 clinician hours</b>.</p>
           </div>
           <div className="hidden md:flex gap-2">
@@ -71,7 +91,7 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => (
+        {filteredKpis.map((k) => (
           <Card key={k.label} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => handleKpiClick(k.label, k.value, k.delta)}>
             <CardContent className="p-5">
               <div className="text-xs text-muted-foreground">{k.label}</div>
@@ -83,7 +103,7 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className={["super admin", "superadmin", "organization admin", "clinic admin"].includes(role) ? "lg:col-span-2" : "lg:col-span-3"}>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Network visit volume</CardTitle>
             <Badge variant="outline">Last 7 days</Badge>
@@ -108,25 +128,27 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle>Revenue mix</CardTitle></CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie data={revenueSplit} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                    {revenueSplit.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        {["super admin", "superadmin", "organization admin", "clinic admin"].includes(role) && (
+          <Card>
+            <CardHeader><CardTitle>Revenue mix</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-72">
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie data={revenueSplit} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
+                      {revenueSplit.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className={["super admin", "superadmin", "organization admin", "clinic admin", "doctor"].includes(role) ? "lg:col-span-2" : "lg:col-span-3"}>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Today's appointments</CardTitle>
             <Button variant="ghost" size="sm" onClick={handleViewAllAppointments}>View all</Button>
@@ -155,23 +177,25 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle>AI agents — live</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {aiAgents.map((a) => (
-              <div key={a.name} className="flex items-center justify-between text-sm border rounded-lg p-3 hover:border-primary/40 transition cursor-pointer" onClick={() => handleAgentClick(a.name, a.resolved, a.calls)}>
-                <div>
-                  <div className="font-medium">{a.name}</div>
-                  <div className="text-xs text-muted-foreground">{a.lang}</div>
+        {["super admin", "superadmin", "organization admin", "clinic admin", "doctor"].includes(role) && (
+          <Card>
+            <CardHeader><CardTitle>AI agents — live</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {aiAgents.map((a) => (
+                <div key={a.name} className="flex items-center justify-between text-sm border rounded-lg p-3 hover:border-primary/40 transition cursor-pointer" onClick={() => handleAgentClick(a.name, a.resolved, a.calls)}>
+                  <div>
+                    <div className="font-medium">{a.name}</div>
+                    <div className="text-xs text-muted-foreground">{a.lang}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-sm">{a.calls.toLocaleString()}</div>
+                    <div className="text-xs text-success">{a.resolved} resolved</div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-mono text-sm">{a.calls.toLocaleString()}</div>
-                  <div className="text-xs text-success">{a.resolved} resolved</div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

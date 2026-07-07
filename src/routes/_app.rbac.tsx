@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection } from "@/lib/use-collection";
 import { organizations, clinics, currentUser } from "@/lib/tenant-context";
+import { axiosInstance } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/rbac")({
   head: () => ({ meta: [{ title: "Advanced RBAC — MOH CLINICS" }] }),
@@ -145,6 +146,26 @@ const SEED_ROLES: Role[] = [
     updated_at: "2025-01-01T00:00:00Z",
     updated_by: "system",
   },
+  {
+    id: "role_clinic_admin",
+    name: "Clinic Admin",
+    description: "Manage clinic operational staff, roster configurations, and daily operations tracking.",
+    scope: "clinic",
+    organization_id: "org_apollo",
+    clinic_id: "clinic_bandra",
+    system: true,
+    permissions: {
+      "admin.clinics": ["view", "update"],
+      "admin.rbac": ["view", "create", "update"],
+      "patient.registration": ["view"],
+      "patient.profile": ["view"],
+      "reception.appointments": ["view"],
+      "billing.invoices": ["view"],
+    },
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    updated_by: "system",
+  },
 ];
 
 export function RbacPage() {
@@ -183,7 +204,7 @@ export function RbacPage() {
 
   const isSuperAdmin = activeUser.role?.toUpperCase() === "SUPER ADMIN" || activeUser.role?.toUpperCase() === "SUPERADMIN";
 
-  // Auto-restore Receptionist role if deleted or missing from the loaded list
+  // Auto-restore core system roles if deleted or missing from the loaded list
   useEffect(() => {
     if (roles.length > 0) {
       const hasReceptionist = roles.some((r) => r.id === "role_receptionist");
@@ -191,44 +212,223 @@ export function RbacPage() {
         const receptionistRole = SEED_ROLES.find((r) => r.id === "role_receptionist");
         if (receptionistRole) {
           create(receptionistRole);
-          toast.success("Restored system Receptionist role successfully.");
+        }
+      }
+
+      const hasClinicAdmin = roles.some((r) => r.id === "role_clinic_admin");
+      if (!hasClinicAdmin) {
+        const clinicAdminRole = SEED_ROLES.find((r) => r.id === "role_clinic_admin");
+        if (clinicAdminRole) {
+          create(clinicAdminRole);
+          toast.success("Restored system Clinic Admin role successfully.");
         }
       }
     }
   }, [roles, create]);
 
-  const filtered = useMemo(
-    () => roles.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
-    [roles, search],
-  );
-  const selected = roles.find((r) => r.id === selectedId) ?? roles[0];
+  const isOrgAdmin = activeUser.role?.toLowerCase() === "organization admin" || activeUser.role?.toLowerCase() === "org admin";
+  const isClinicAdmin = activeUser.role?.toLowerCase() === "clinic admin" || activeUser.role?.toLowerCase() === "clinicadmin";
 
-  const togglePermission = (screenKey: string, action: Action) => {
+  const filtered = useMemo(() => {
+    return roles.filter((r) => {
+      const matchSearch = r.name.toLowerCase().includes(search.toLowerCase());
+      if (!matchSearch) return false;
+      
+      const rIdLower = r.id.toLowerCase();
+      const rNameLower = r.name.toLowerCase();
+
+      // 1. Organization Admin: Hide Super Admin and Organization Admin roles
+      if (isOrgAdmin) {
+        if (
+          rIdLower.includes("super_admin") ||
+          rIdLower.includes("org_admin") ||
+          rNameLower.includes("super admin") ||
+          rNameLower.includes("superadmin") ||
+          rNameLower.includes("organization admin") ||
+          rNameLower.includes("org admin")
+        ) {
+          return false;
+        }
+      }
+
+      // 2. Clinic Admin: Hide Super Admin, Organization Admin, and Clinic Admin roles
+      if (isClinicAdmin) {
+        if (
+          rIdLower.includes("super_admin") ||
+          rIdLower.includes("org_admin") ||
+          rIdLower.includes("clinic_admin") ||
+          rNameLower.includes("super admin") ||
+          rNameLower.includes("superadmin") ||
+          rNameLower.includes("organization admin") ||
+          rNameLower.includes("org admin") ||
+          rNameLower.includes("clinic admin") ||
+          rNameLower.includes("clinicadmin")
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [roles, search, isOrgAdmin, isClinicAdmin]);
+
+  const selected = useMemo(() => {
+    const list = filtered;
+    const found = list.find((r) => r.id === selectedId);
+    return found ?? list[0];
+  }, [filtered, selectedId]);
+
+  const togglePermission = async (screenKey: string, action: Action) => {
     if (!selected) return;
+
+    // Self-modification lockout rule
+    const isSelfRole = selected.name.toLowerCase() === activeUser.role?.toLowerCase();
+    if (isSelfRole && !isSuperAdmin) {
+      toast.error("Access Denied", {
+        description: "Organization Admins and Clinic Admins are not permitted to modify their own active permissions matrix."
+      });
+      return;
+    }
+
+    const originalPermissions = { ...selected.permissions };
+
     const current = selected.permissions[screenKey] ?? [];
     const next = current.includes(action) ? current.filter((a) => a !== action) : [...current, action];
     const nextPerms = { ...selected.permissions, [screenKey]: next };
+    
+    // Optimistic UI update
     update(selected.id, { permissions: nextPerms, updated_at: new Date().toISOString(), updated_by: currentUser.name });
+
+    try {
+      // Sync directly with backend database storage layer
+      await axiosInstance.post("/auth/rbac/update", {
+        role_id: selected.id,
+        role_name: selected.name,
+        permissions: nextPerms
+      });
+      
+      // Invalidate local storage cache and force instant RBAC refresh across views
+      window.dispatchEvent(new Event("storage_user_change"));
+      window.dispatchEvent(new Event("rbac_force_sync"));
+    } catch (err: any) {
+      console.error("Backend permissions update failed, reverting UI state. Error details:", err.response?.data || err.message);
+      // Revert UI checkboxes immediately to original database state
+      update(selected.id, { permissions: originalPermissions });
+      toast.error("Sync Failed", {
+        description: err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to persist permission modification to backend storage database."
+      });
+    }
   };
 
-  const handleSave = (role: Role) => {
+  const handleSave = async (role: Role) => {
     const isEdit = roles.some((r) => r.id === role.id);
-    if (isEdit) {
-      update(role.id, { ...role, updated_at: new Date().toISOString(), updated_by: currentUser.name });
-      toast.success(`Role "${role.name}" updated`);
-    } else {
-      const created = create(role);
-      setSelectedId(created.id);
-      toast.success(`Role "${role.name}" created`);
+    
+    // Strict zero-trust front-end guardrail: reject unauthorized role modifications
+    const rIdLower = role.id.toLowerCase();
+    const nameLower = role.name.toLowerCase();
+
+    if (isOrgAdmin) {
+      if (
+        rIdLower.includes("super_admin") ||
+        rIdLower.includes("org_admin") ||
+        nameLower.includes("super admin") ||
+        nameLower.includes("superadmin") ||
+        nameLower.includes("organization admin") ||
+        nameLower.includes("org admin")
+      ) {
+        toast.error("Access Denied", {
+          description: "You do not possess privileges to configure Super Admin profiles."
+        });
+        return;
+      }
     }
-    setDialogOpen(false);
-    setEditing(null);
+
+    if (isClinicAdmin) {
+      if (
+        rIdLower.includes("super_admin") ||
+        rIdLower.includes("org_admin") ||
+        rIdLower.includes("clinic_admin") ||
+        nameLower.includes("super admin") ||
+        nameLower.includes("superadmin") ||
+        nameLower.includes("organization admin") ||
+        nameLower.includes("org admin") ||
+        nameLower.includes("clinic admin") ||
+        nameLower.includes("clinicadmin")
+      ) {
+        toast.error("Access Denied", {
+          description: "You do not possess privileges to configure higher-tier or equivalent Admin profiles."
+        });
+        return;
+      }
+    }
+
+    try {
+      if (isEdit) {
+        update(role.id, { ...role, updated_at: new Date().toISOString(), updated_by: currentUser.name });
+        await axiosInstance.post("/auth/rbac/update", {
+          role_id: role.id,
+          role_name: role.name,
+          permissions: role.permissions
+        });
+        toast.success(`Role "${role.name}" updated`);
+      } else {
+        const created = create(role);
+        setSelectedId(created.id);
+        await axiosInstance.post("/auth/rbac/update", {
+          role_id: created.id,
+          role_name: created.name,
+          permissions: created.permissions
+        });
+        toast.success(`Role "${role.name}" created`);
+      }
+      
+      // Trigger dynamic invalidation
+      window.dispatchEvent(new Event("storage_user_change"));
+      window.dispatchEvent(new Event("rbac_force_sync"));
+
+      setDialogOpen(false);
+      setEditing(null);
+    } catch (err) {
+      toast.error("Save Failed", {
+        description: "Failed to persist role modifications to the backend database."
+      });
+    }
   };
 
   const handleDelete = (role: Role) => {
+    const rIdLower = role.id.toLowerCase();
+    const nameLower = role.name.toLowerCase();
+
+    if (isOrgAdmin) {
+      if (rIdLower.includes("super_admin") || nameLower.includes("super admin") || nameLower.includes("superadmin")) {
+        toast.error("Access Denied", {
+          description: "You do not possess privileges to delete Super Admin profiles."
+        });
+        return;
+      }
+    }
+
+    if (isClinicAdmin) {
+      if (
+        rIdLower.includes("super_admin") ||
+        rIdLower.includes("org_admin") ||
+        rIdLower.includes("clinic_admin") ||
+        nameLower.includes("super admin") ||
+        nameLower.includes("superadmin") ||
+        nameLower.includes("organization admin") ||
+        nameLower.includes("org admin") ||
+        nameLower.includes("clinic admin") ||
+        nameLower.includes("clinicadmin")
+      ) {
+        toast.error("Access Denied", {
+          description: "You do not possess privileges to delete higher-tier or equivalent Admin profiles."
+        });
+        return;
+      }
+    }
     remove(role.id);
     toast.success(`${role.system ? "System role" : "Role"} "${role.name}" deleted`);
-    if (selectedId === role.id) setSelectedId(roles[0]?.id ?? "");
+    if (selectedId === role.id) setSelectedId(filtered[0]?.id ?? "");
   };
 
   const cloneRole = (role: Role) => {
@@ -265,6 +465,15 @@ export function RbacPage() {
   const [newPermKey, setNewPermKey] = useState("");
 
   const addCustomPermission = () => {
+    // Self-modification lockout rule
+    const isSelfRole = selected?.name.toLowerCase() === activeUser.role?.toLowerCase();
+    if (isSelfRole && !isSuperAdmin) {
+      toast.error("Access Denied", {
+        description: "You are not permitted to add custom permissions to your own role."
+      });
+      return;
+    }
+
     const key = newPermKey.trim() || `${newPermModule.toLowerCase().replace(/\s+/g, ".")}.${newPermScreen.toLowerCase().replace(/\s+/g, "_")}`;
     if (!newPermModule.trim() || !newPermScreen.trim()) {
       toast.error("Module and Screen name are required");
@@ -283,6 +492,15 @@ export function RbacPage() {
   };
 
   const removeCustomPermission = (key: string) => {
+    // Self-modification lockout rule
+    const isSelfRole = selected?.name.toLowerCase() === activeUser.role?.toLowerCase();
+    if (isSelfRole && !isSuperAdmin) {
+      toast.error("Access Denied", {
+        description: "You are not permitted to remove custom permissions from your own role."
+      });
+      return;
+    }
+
     setCustomPerms((prev) => prev.filter((p) => p.key !== key));
     if (selected) {
       const { [key]: _, ...rest } = selected.permissions;
@@ -377,8 +595,22 @@ export function RbacPage() {
               </div>
               <div className="flex gap-2 shrink-0">
                 <Button size="sm" variant="outline" onClick={() => cloneRole(selected)}>Clone</Button>
-                <Button size="sm" variant="outline" onClick={() => { setEditing(selected); setDialogOpen(true); }}><Pencil className="size-3.5 mr-1" /> Edit</Button>
-                <Button size="sm" variant="outline" onClick={() => handleDelete(selected)}><Trash2 className="size-3.5 mr-1 text-destructive" /> Delete</Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => { setEditing(selected); setDialogOpen(true); }}
+                  disabled={selected.name.toLowerCase() === activeUser.role?.toLowerCase() && !isSuperAdmin}
+                >
+                  <Pencil className="size-3.5 mr-1" /> Edit
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => handleDelete(selected)}
+                  disabled={selected.name.toLowerCase() === activeUser.role?.toLowerCase() && !isSuperAdmin}
+                >
+                  <Trash2 className="size-3.5 mr-1 text-destructive" /> Delete
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -414,9 +646,15 @@ export function RbacPage() {
                                 </td>
                                 {ACTIONS.map((a) => {
                                   const checked = (selected.permissions[s.key] ?? []).includes(a);
+                                  const isSelfRole = selected.name.toLowerCase() === activeUser.role?.toLowerCase();
+                                  const disabled = isSelfRole && !isSuperAdmin;
                                   return (
                                     <td key={a} className="px-2 py-2 text-center">
-                                      <Checkbox checked={checked} onCheckedChange={() => togglePermission(s.key, a)} />
+                                      <Checkbox 
+                                        checked={checked} 
+                                        onCheckedChange={() => togglePermission(s.key, a)} 
+                                        disabled={disabled}
+                                      />
                                     </td>
                                   );
                                 })}

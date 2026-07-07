@@ -14,16 +14,28 @@ export const axiosInstance = axios.create({
 // Request interceptor to dynamically inject active Tenant and Auth context headers
 axiosInstance.interceptors.request.use(
   (config) => {
-    // 1. Inject Tenant parameters from the active context context
-    if (currentUser.organization_id) {
-      config.headers["X-Organization-ID"] = currentUser.organization_id;
+    // 1. Inject Tenant parameters dynamically from the active user profile context
+    let activeOrgId = currentUser.organization_id;
+    let activeClinicId = currentUser.clinic_id;
+
+    const savedUserStr = localStorage.getItem("active_user");
+    if (savedUserStr) {
+      try {
+        const parsed = JSON.parse(savedUserStr);
+        if (parsed.organization_id) activeOrgId = parsed.organization_id;
+        if (parsed.clinic_id !== undefined) activeClinicId = parsed.clinic_id;
+      } catch (e) {}
     }
-    if (currentUser.clinic_id) {
-      config.headers["X-Clinic-ID"] = currentUser.clinic_id;
+
+    if (activeOrgId) {
+      config.headers["X-Organization-ID"] = activeOrgId;
+    }
+    if (activeClinicId) {
+      config.headers["X-Clinic-ID"] = activeClinicId;
     }
 
     // 2. Inject Auth Token if present in local storage
-    const token = localStorage.getItem("auth_token");
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }

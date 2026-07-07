@@ -115,17 +115,7 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
   }, [selectedClinicId, allDepartments]);
 
   if (!hasPermission("can_manage_staff_onboarding")) {
-    return (
-      <Card className="border-warning/30 bg-warning/5 max-w-4xl mx-auto my-6">
-        <CardContent className="p-8 text-center space-y-4">
-          <ShieldAlert className="size-12 text-warning mx-auto animate-bounce" />
-          <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            You must possess 'can_manage_staff_onboarding' privileges to access the staff credentials panel. Please contact your Organization Admin.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   const handleOnboard = async (e: React.FormEvent) => {

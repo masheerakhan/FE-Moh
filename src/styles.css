@@ -159,5 +159,37 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-size: 0.9375rem; /* 15px base size for better corporate scaling */
+    line-height: 1.6;
+  }
+
+  h1 {
+    font-size: 1.875rem; /* 30px */
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.5rem; /* 24px */
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 1.25rem; /* 20px */
+    font-weight: 600;
+  }
+
+  /* Custom scaling classes to prevent microscopic fonts */
+  .sidebar-nav-link {
+    font-size: 0.9375rem !important; /* ~15px link font */
+    font-weight: 500;
+  }
+
+  .card-title-scaled {
+    font-size: 1.0625rem !important; /* ~17px card title */
+    font-weight: 600;
+  }
+
+  .card-desc-scaled {
+    font-size: 0.875rem !important; /* ~14px card description */
   }
 }

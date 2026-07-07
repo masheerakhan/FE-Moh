@@ -22,6 +22,20 @@ function LoginPage() {
 
   const defaultProfiles = [
     {
+      label: "Super Admin",
+      email: "super.admin@helix.health",
+      pass: "superPass",
+      slug: "platform-hq",
+      desc: "Platform Owner / System Controller"
+    },
+    {
+      label: "Organization Admin",
+      email: "org.admin@helix.health",
+      pass: "orgPass",
+      slug: "apollo-india",
+      desc: "Corporate Coordinator"
+    },
+    {
       label: "Clinic Admin",
       email: "riya.iyer@helix.health",
       pass: "adminPass",
@@ -67,11 +81,15 @@ function LoginPage() {
 
     setLoading(true);
     try {
+      const matchedProfile = defaultProfiles.find(p => p.email.toLowerCase() === email.toLowerCase());
+      const payloadRole = matchedProfile ? matchedProfile.label : undefined;
+
       // POST to backend token login endpoint
       const response = await axiosInstance.post("/accounts/login/", {
         email,
         password,
-        workspace_slug: workspaceSlug
+        workspace_slug: workspaceSlug,
+        role: payloadRole
       });
 
       const { token, user } = response.data;
@@ -88,12 +106,19 @@ function LoginPage() {
       });
 
       // Route dynamically to matching home workspace
-      if (user.role === "Patient") {
+      const r = user.role?.toLowerCase() || "";
+      if (r === "patient") {
         navigate({ to: "/patient" });
-      } else if (user.role === "Receptionist") {
+      } else if (r === "receptionist" || r === "clinical staff") {
         navigate({ to: "/reception" });
-      } else if (user.role === "Doctor") {
+      } else if (r === "doctor") {
         navigate({ to: "/doctor" });
+      } else if (r === "organization admin") {
+        navigate({ to: "/admin/org" });
+      } else if (r === "super admin" || r === "superadmin") {
+        navigate({ to: "/admin/super" });
+      } else if (r === "clinic admin" || r === "clinicadmin") {
+        navigate({ to: "/admin/clinic" });
       } else {
         navigate({ to: "/" });
       }
@@ -124,34 +149,75 @@ function LoginPage() {
             organization_id: "org_apollo",
             clinic_id: null,
             workspace_slug: workspaceSlug || "apollo-india",
+            specialization: "Corporate Coordinator",
             permissions: [
               "can_define_rbac_boundaries",
-              "can_link_clinic_departments",
+              "can_view_billing_consolidation"
+            ]
+          };
+        } else if (matched) {
+          let name = "Dr. Riya Iyer";
+          let permissions: string[] = [];
+          let clinicId: string | null = "clinic_bandra";
+          let orgId = "org_apollo";
+          let spec = "Clinical Staff";
+
+          if (matched.label === "Patient") {
+            name = "Pallavi Sarbahi";
+            permissions = ["can_schedule_appointments"];
+            spec = "Outpatient";
+          } else if (matched.label === "Receptionist") {
+            name = "Nurse Anita Sen";
+            permissions = ["can_manage_patients", "can_schedule_appointments", "can_parse_vitals", "can_paste_unstructured_labs", "can_issue_gst_invoices"];
+            spec = "Front Desk Supervisor";
+          } else if (matched.label === "Doctor") {
+            name = "Dr. Amit Sharma";
+            permissions = ["can_manage_patients", "can_schedule_appointments", "can_parse_vitals"];
+            spec = "General Medicine";
+          } else if (matched.label === "Super Admin") {
+            name = "Super Admin Owner";
+            permissions = [
+              "can_define_rbac_boundaries",
+              "can_manage_clinic_rbac",
               "can_view_billing_consolidation",
               "can_manage_patients",
               "can_schedule_appointments",
               "can_issue_gst_invoices",
+              "can_parse_vitals",
+              "can_paste_unstructured_labs",
+              "can_onboard_staff",
+              "can_assign_staff_departments",
+              "can_configure_working_hours",
               "can_manage_staff_onboarding",
               "can_view_staff_directory",
               "can_create_staff_profile",
               "can_modify_staff_status",
-              "can_allocate_staff_roles",
-              "can_manage_clinic_rbac"
-            ]
-          };
-        } else if (matched) {
+              "can_allocate_staff_roles"
+            ];
+            clinicId = null;
+            spec = "System Controller";
+          } else if (matched.label === "Organization Admin") {
+            name = "Corporate Admin";
+            permissions = ["can_define_rbac_boundaries", "can_view_billing_consolidation"];
+            clinicId = null;
+            spec = "Corporate Coordinator";
+          } else {
+            // Clinic Admin
+            name = "Dr. Riya Iyer";
+            permissions = ["can_define_rbac_boundaries", "can_onboard_staff", "can_assign_staff_departments", "can_configure_working_hours", "can_manage_patients", "can_schedule_appointments", "can_issue_gst_invoices", "can_manage_staff_onboarding", "can_view_staff_directory", "can_create_staff_profile", "can_modify_staff_status", "can_allocate_staff_roles", "can_manage_clinic_rbac"];
+            spec = "Clinic Director";
+          }
+
           dummyUser = {
-            id: `usr_${matched.label.toLowerCase()}`,
-            name: matched.label === "Patient" ? "Pallavi Sarbahi" : matched.label === "Receptionist" ? "Nurse Anita Sen" : matched.label === "Doctor" ? "Dr. Amit Sharma" : "Dr. Riya Iyer",
+            id: `usr_${matched.label.toLowerCase().replace(" ", "_")}`,
+            name,
             email: matched.email,
             role: matched.label,
-            organization_id: "org_apollo",
-            clinic_id: "clinic_bandra",
-            workspace_slug: workspaceSlug || "apollo-bandra",
-            permissions: matched.label === "Patient" ? ["can_schedule_appointments"] :
-                         matched.label === "Receptionist" ? ["can_manage_patients", "can_schedule_appointments", "can_parse_vitals", "can_paste_unstructured_labs", "can_issue_gst_invoices"] :
-                         matched.label === "Doctor" ? ["can_manage_patients", "can_schedule_appointments", "can_parse_vitals"] :
-                         ["can_define_rbac_boundaries", "can_onboard_staff", "can_assign_staff_departments", "can_configure_working_hours", "can_manage_patients", "can_schedule_appointments", "can_issue_gst_invoices", "can_manage_staff_onboarding", "can_view_staff_directory", "can_create_staff_profile", "can_modify_staff_status", "can_allocate_staff_roles", "can_manage_clinic_rbac"]
+            organization_id: orgId,
+            clinic_id: clinicId,
+            workspace_slug: workspaceSlug || matched.slug,
+            specialization: spec,
+            permissions
           };
         }
 
@@ -163,14 +229,19 @@ function LoginPage() {
           description: `Logged in as ${dummyUser.name} (${dummyUser.role}).`
         });
 
-        if (dummyUser.role === "Patient") {
+        const dr = dummyUser.role?.toLowerCase() || "";
+        if (dr === "patient") {
           navigate({ to: "/patient" });
-        } else if (dummyUser.role === "Receptionist") {
+        } else if (dr === "receptionist" || dr === "clinical staff") {
           navigate({ to: "/reception" });
-        } else if (dummyUser.role === "Doctor") {
+        } else if (dr === "doctor") {
           navigate({ to: "/doctor" });
-        } else if (dummyUser.role === "Organization Admin") {
+        } else if (dr === "organization admin") {
           navigate({ to: "/admin/org" });
+        } else if (dr === "super admin" || dr === "superadmin") {
+          navigate({ to: "/admin/super" });
+        } else if (dr === "clinic admin" || dr === "clinicadmin") {
+          navigate({ to: "/admin/clinic" });
         } else {
           navigate({ to: "/" });
         }
