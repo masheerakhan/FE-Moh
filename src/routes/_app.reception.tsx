@@ -445,6 +445,7 @@ function Reception() {
       let patientId = "";
       const allPatients = await patientApi.getAll();
       const matched = allPatients.find((p) =>
+        p.id === name.trim() ||
         `${p.first_name} ${p.last_name || ""}`.toLowerCase().includes(name.trim().toLowerCase())
       );
       if (matched) {
@@ -524,17 +525,28 @@ function Reception() {
                       }
                     }
 
-                    const parts = v.name.trim().split(" ");
-                    const first_name = parts[0];
-                    const last_name = parts.slice(1).join(" ");
+                    let patient;
+                    const allPatients = await patientApi.getAll();
+                    const matched = allPatients.find((p) =>
+                      p.id === v.name.trim() ||
+                      `${p.first_name} ${p.last_name || ""}`.toLowerCase() === v.name.trim().toLowerCase()
+                    );
+                    
+                    if (matched) {
+                      patient = matched;
+                    } else {
+                      const parts = v.name.trim().split(" ");
+                      const first_name = parts[0];
+                      const last_name = parts.slice(1).join(" ");
 
-                    const patient = await patientApi.create({
-                      first_name,
-                      last_name: last_name || undefined,
-                      phone: v.mobile,
-                      gender: "MALE",
-                      date_of_birth: formattedDob || v.dob || undefined,
-                    });
+                      patient = await patientApi.create({
+                        first_name,
+                        last_name: last_name || undefined,
+                        phone: v.mobile,
+                        gender: "MALE",
+                        date_of_birth: formattedDob || v.dob || undefined,
+                      });
+                    }
 
                     if (activeDoctorId) {
                       await schedulingApi.issueToken(patient.id!, activeDoctorId);

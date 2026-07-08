@@ -56,7 +56,11 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      const response = await axiosInstance.get("/auth/me/permissions");
+      const response = await axiosInstance.get("/auth/me/permissions", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const { user_context, permissions: perms } = response.data;
       setUserContext(user_context);
       setPermissions(perms);

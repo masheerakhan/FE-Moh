@@ -216,7 +216,7 @@ export function PatientRegistrationForm({ onSuccess }: PatientRegistrationFormPr
 
       const createdPatient = await patientApi.create(payload);
       toast.success("Patient Onboarded successfully!", {
-        description: `Active record created and bound contextually to tenant database.`
+        description: `Active record created with ID: "${createdPatient.id}" and bound contextually to tenant database.`
       });
 
       // Handle Auto-Enqueue to Live Consultation Queue

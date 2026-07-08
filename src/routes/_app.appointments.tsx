@@ -164,6 +164,7 @@ function AppointmentsPage() {
           let patientId = "";
           const patients = await patientApi.getAll();
           const matched = patients.find((p) =>
+            p.id === v.patient.trim() ||
             `${p.first_name} ${p.last_name || ""}`
               .toLowerCase()
               .includes(v.patient.toLowerCase())

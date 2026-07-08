@@ -301,10 +301,16 @@ export function RbacPage() {
 
     try {
       // Sync directly with backend database storage layer
-      await axiosInstance.post("/auth/rbac/update", {
+      const token = localStorage.getItem("token");
+      await axiosInstance.put("/auth/rbac/update", {
         role_id: selected.id,
         role_name: selected.name,
         permissions: nextPerms
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
       });
       
       // Invalidate local storage cache and force instant RBAC refresh across views
@@ -363,21 +369,32 @@ export function RbacPage() {
     }
 
     try {
+      const token = localStorage.getItem("token");
       if (isEdit) {
         update(role.id, { ...role, updated_at: new Date().toISOString(), updated_by: currentUser.name });
-        await axiosInstance.post("/auth/rbac/update", {
+        await axiosInstance.put("/auth/rbac/update", {
           role_id: role.id,
           role_name: role.name,
           permissions: role.permissions
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
         });
         toast.success(`Role "${role.name}" updated`);
       } else {
         const created = create(role);
         setSelectedId(created.id);
-        await axiosInstance.post("/auth/rbac/update", {
+        await axiosInstance.put("/auth/rbac/update", {
           role_id: created.id,
           role_name: created.name,
           permissions: created.permissions
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
         });
         toast.success(`Role "${role.name}" created`);
       }
