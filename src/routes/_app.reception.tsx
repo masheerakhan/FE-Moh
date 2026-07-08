@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { ActionButton } from "@/components/action-button";
 import { patientApi, schedulingApi, axiosInstance, appointmentApi, billingApi } from "@/lib/api";
+const secureApi = axiosInstance;
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HorizontalTimeGrid } from "@/components/horizontal-time-grid";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -216,20 +217,32 @@ function Reception() {
     }
   };
 
-  const handlePatientSearch = async (query: string) => {
+const handlePatientSearch = async (query: string) => {
     setSearchQuery(query);
-    if (!query.trim()) {
+    
+    if (!query || !query.trim() || query.trim().length < 2) {
       setSearchResults([]);
       return;
     }
+
     try {
-      const allPatients = await patientApi.getAll();
-      const filtered = allPatients.filter((p: any) =>
-        `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().includes(query.toLowerCase())
-      );
-      setSearchResults(filtered);
+      // Correctly opened try block and clean configuration object passing
+      const response: any = await secureApi.get('/patients/search', {
+        params: { q: query.trim() }
+      });
+      
+      const records = response?.data?.patients || [];
+      
+      const mappedResults = records.map((p: any) => ({
+        id: p.id,
+        first_name: p.name || '', 
+        last_name: '',
+        phone: p.phone_number || p.phone || ''
+      }));
+
+      setSearchResults(mappedResults);
     } catch (err) {
-      console.warn('Patient search failed', err);
+      console.warn('Patient backend search failed', err);
       setSearchResults([]);
     }
   };
@@ -570,7 +583,7 @@ function Reception() {
       />
 
       {/* Queue Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mb-6">
         <Card>
           <CardContent className="p-5">
             <div className="text-xs text-muted-foreground">Patients Today</div>

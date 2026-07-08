@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModulePage } from "@/components/module-page";
-import { Calendar, Trash2, CheckCircle2 } from "lucide-react";
+import { Calendar, Trash2, CheckCircle2, ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { appointmentApi, patientApi, axiosInstance } from "@/lib/api";
@@ -21,10 +21,15 @@ function AppointmentsPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [activeScheduleDate, setActiveScheduleDate] = useState<string>("2026-07-08");
 
   const filteredAppointments = statusFilter === 'ALL'
     ? appointments
     : appointments.filter(a => a.status?.toUpperCase() === statusFilter);
+
+  const calendarAppointments = filteredAppointments.filter(
+    (a: any) => a.date === activeScheduleDate
+  );
 
   const cancelledCount = appointments.filter(a => a.status?.toUpperCase() === 'CANCELLED').length;
 
@@ -200,14 +205,16 @@ function AppointmentsPage() {
       }}
     >
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
-        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-auto">
-          <TabsList>
-            <TabsTrigger value="ALL">All</TabsTrigger>
-            <TabsTrigger value="PENDING">Pending</TabsTrigger>
-            <TabsTrigger value="CONFIRMED">Confirmed</TabsTrigger>
-            <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-auto">
+            <TabsList>
+              <TabsTrigger value="ALL">All</TabsTrigger>
+              <TabsTrigger value="PENDING">Pending</TabsTrigger>
+              <TabsTrigger value="CONFIRMED">Confirmed</TabsTrigger>
+              <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
         <div className="flex bg-muted rounded p-0.5 text-xs font-semibold">
           <button
             onClick={() => setViewMode("list")}
@@ -295,7 +302,7 @@ function AppointmentsPage() {
       ) : (
         <div className="mt-4">
           <DepartmentCalendar
-            appointments={filteredAppointments.map((a: any) => ({
+            appointments={calendarAppointments.map((a: any) => ({
               id: a.id,
               patientName: a.patient_name || "Patient",
               departmentName: a.department_name || "General Medicine",
@@ -303,7 +310,8 @@ function AppointmentsPage() {
               status: a.status === "CONFIRMED" ? "CONFIRMED" : a.status === "CANCELLED" ? "CANCELLED" : "PENDING",
             }))}
             departments={["General Medicine", "Cardiology", "Pediatrics", "Endocrinology"]}
-            selectedDate={appointments[0]?.date || new Date().toISOString().slice(0, 10)}
+            selectedDate={activeScheduleDate}
+            onDateChange={setActiveScheduleDate}
           />
         </div>
       )}

@@ -1,7 +1,15 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar as CalendarIcon, Clock, Layers } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Layers, ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { BookAppointmentModal } from "./book-appointment-modal";
 
 interface Appointment {
   id: string | number;
@@ -15,43 +23,238 @@ interface DepartmentCalendarProps {
   appointments: Appointment[];
   departments: string[];
   selectedDate?: string;
+  onDateChange?: (date: string) => void;
+}
+
+interface CustomDatePickerProps {
+  selectedDate: string;
+  onChange: (date: string) => void;
+}
+
+function CustomDatePicker({ selectedDate, onChange }: CustomDatePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(6); // July
+
+  useEffect(() => {
+    if (selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length === 3) {
+        setCurrentYear(parts[0]);
+        setCurrentMonth(parts[1] - 1);
+      }
+    }
+  }, [selectedDate]);
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(prev => prev - 1);
+    } else {
+      setCurrentMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(prev => prev + 1);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+  };
+
+  const getDays = () => {
+    const days = [];
+    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+    const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const prevTotalDays = new Date(currentYear, currentMonth, 0).getDate();
+
+    // trailing prev month days
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      days.push({
+        day: prevTotalDays - i,
+        isCurrentMonth: false,
+        dateString: `${currentMonth === 0 ? currentYear - 1 : currentYear}-${String(currentMonth === 0 ? 12 : currentMonth).padStart(2, '0')}-${String(prevTotalDays - i).padStart(2, '0')}`
+      });
+    }
+
+    // current month days
+    for (let i = 1; i <= totalDays; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: true,
+        dateString: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`
+      });
+    }
+
+    // next month days
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: false,
+        dateString: `${currentMonth === 11 ? currentYear + 1 : currentYear}-${String(currentMonth === 11 ? 1 : currentMonth + 2).padStart(2, '0')}-${String(i).padStart(2, '0')}`
+      });
+    }
+
+    return days;
+  };
+
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return "Select Date";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]} - ${parts[1]} - ${parts[0]}`;
+  };
+
+  const daysGrid = getDays();
+
+  return (
+    <div className="relative z-45">
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2 text-sm font-semibold text-slate-800 dark:text-slate-200 cursor-pointer shadow-sm hover:border-slate-300 transition-colors h-10 select-none"
+      >
+        <span className="font-mono text-sm tracking-wider">{formatDisplayDate(selectedDate)}</span>
+        <CalendarIcon className="size-4 text-slate-500" />
+      </div>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-4 text-slate-800 z-50 select-none">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-1 cursor-pointer">
+              <span className="font-bold text-sm text-slate-900">{monthNames[currentMonth]}, {currentYear}</span>
+              <span className="text-[10px] text-slate-500">▼</span>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={handlePrevMonth}
+                className="p-1 hover:bg-slate-100 rounded transition-colors text-slate-600 font-bold text-base w-6 h-6 flex items-center justify-center border border-slate-200"
+              >
+                ↑
+              </button>
+              <button 
+                onClick={handleNextMonth}
+                className="p-1 hover:bg-slate-100 rounded transition-colors text-slate-600 font-bold text-base w-6 h-6 flex items-center justify-center border border-slate-200"
+              >
+                ↓
+              </button>
+            </div>
+          </div>
+
+          {/* Weekday Row */}
+          <div className="grid grid-cols-7 text-center text-xs font-bold text-slate-600 mb-2">
+            <span>Su</span>
+            <span>Mo</span>
+            <span>Tu</span>
+            <span>We</span>
+            <span>Th</span>
+            <span>Fr</span>
+            <span>Sa</span>
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1 text-center text-xs">
+            {daysGrid.map((d, idx) => {
+              const isSelected = selectedDate === d.dateString;
+              return (
+                <div
+                  key={idx}
+                  onClick={() => {
+                    onChange(d.dateString);
+                    setIsOpen(false);
+                  }}
+                  className={`w-9 h-9 cursor-pointer flex items-center justify-center font-semibold text-xs transition-all ${
+                    !d.isCurrentMonth
+                      ? "text-slate-400 hover:bg-slate-50"
+                      : isSelected
+                        ? "border-2 border-black bg-slate-500 text-white font-bold shadow-sm"
+                        : "text-slate-800 hover:bg-slate-100"
+                  }`}
+                >
+                  {d.day}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex justify-between items-center border-t border-slate-100 mt-4 pt-3 text-xs">
+            <button 
+              onClick={() => {
+                onChange("");
+                setIsOpen(false);
+              }}
+              className="text-blue-600 hover:underline font-bold text-xs"
+            >
+              Clear
+            </button>
+            <button 
+              onClick={() => {
+                const todayStr = new Date().toISOString().slice(0, 10);
+                onChange(todayStr);
+                setIsOpen(false);
+              }}
+              className="text-blue-600 hover:underline font-bold text-xs"
+            >
+              Today
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function DepartmentCalendar({
   appointments,
   departments = ["General Medicine", "Cardiology", "Pediatrics", "Endocrinology"],
   selectedDate = new Date().toISOString().slice(0, 10),
+  onDateChange,
 }: DepartmentCalendarProps) {
+  const [enabledDepartments, setEnabledDepartments] = useState<string[]>([
+    'General Medicine', 'Cardiology', 'Pediatrics', 'Endocrinology'
+  ]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTime, setSelectedTime] = useState("");
+  const [selectedDept, setSelectedDept] = useState("");
+  const [popoverAnchor, setPopoverAnchor] = useState<{ time: string; dept: string } | null>(null);
+  const [quickStart, setQuickStart] = useState<string>('');
+  const [quickEnd, setQuickEnd] = useState<string>('');
+
+  const handleTimeSlotClick = (time: string, dept: string) => {
+    setSelectedTime(time);
+    setSelectedDept(dept);
+    setIsModalOpen(true);
+  };
   
-  // Define time slots from 09:00 to 14:00 at 15-minute intervals
-  const timeSlots = useMemo(() => {
-    const slots = [];
-    let h = 9;
-    let m = 0;
-    while (h < 14) {
-      const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      slots.push(timeStr);
-      m += 15;
-      if (m >= 60) {
-        h += 1;
-        m = 0;
-      }
-    }
-    return slots;
-  }, []);
+  // Define time slots from 09:30 AM to 06:00 PM at 15-minute intervals
+  const timeSlots = [
+    '09:30', '09:45', '10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45',
+    '12:00', '12:15', '12:30', '12:45', '13:00', '13:15', '13:30', '13:45', '14:00', '14:15',
+    '14:30', '14:45', '15:00', '15:15', '15:30', '15:45', '16:00', '16:15', '16:30', '16:45',
+    '17:00', '17:15', '17:30', '17:45', '18:00'
+  ];
 
   // Calculate CSS grid column index for a department name
   const getColIndex = (deptName: string) => {
     const cleanName = deptName?.trim()?.toLowerCase() || "";
-    const idx = departments.findIndex(d => d.trim().toLowerCase() === cleanName);
+    const idx = enabledDepartments.findIndex(d => d.trim().toLowerCase() === cleanName);
     return idx !== -1 ? idx : 0;
   };
 
-  // Calculate CSS grid row index for a time string (e.g. "09:15" -> row index 1)
+  // Calculate CSS grid row index for a time string (e.g. "09:30" -> row index 1)
   const getRowIndex = (timeStr: string) => {
     if (!timeStr) return 0;
     const [h, m] = timeStr.split(":").map(Number);
-    const startMins = 9 * 60; // starts at 09:00
+    const startMins = 9 * 60 + 30; // starts at 09:30
     const currentMins = h * 60 + m;
     const diff = currentMins - startMins;
     if (diff < 0) return 0;
@@ -59,8 +262,8 @@ export function DepartmentCalendar({
   };
 
   return (
-    <Card className="border shadow-elegant bg-card w-full overflow-hidden">
-      <CardHeader className="pb-3 border-b">
+    <Card className="border border-slate-200 dark:border-slate-800 shadow-elegant bg-white dark:bg-slate-950 w-full overflow-hidden">
+      <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
@@ -70,32 +273,63 @@ export function DepartmentCalendar({
               Live department scheduler grid showing intersecting 15-minute time slots.
             </CardDescription>
           </div>
-          <Badge variant="outline" className="font-mono text-xs">
-            {selectedDate}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs flex items-center gap-1">
+                  Departments <ChevronDown className="size-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-white">
+                {departments.map((dept) => {
+                  const isChecked = enabledDepartments.includes(dept);
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={dept}
+                      checked={isChecked}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setEnabledDepartments([...enabledDepartments, dept]);
+                        } else {
+                          setEnabledDepartments(enabledDepartments.filter((d) => d !== dept));
+                        }
+                      }}
+                      className="text-xs hover:bg-slate-800 focus:bg-slate-800"
+                    >
+                      {dept}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <CustomDatePicker 
+              selectedDate={selectedDate} 
+              onChange={(date) => onDateChange?.(date)} 
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0 overflow-x-auto">
-        <div className="min-w-[800px] bg-slate-950/20 dark:bg-slate-900/10">
+        <div className="min-w-[800px] bg-white dark:bg-slate-950">
           
           {/* Calendar Grid Container */}
           <div 
             className="grid"
             style={{
-              gridTemplateColumns: `100px repeat(${departments.length}, 1fr)`,
+              gridTemplateColumns: `100px repeat(${enabledDepartments.length}, 1fr)`,
               gridTemplateRows: `40px repeat(${timeSlots.length}, 50px)`,
             }}
           >
             {/* Top-Left Corner Cell */}
-            <div className="border-b border-r bg-muted/40 flex items-center justify-center text-[10px] font-bold text-muted-foreground uppercase">
+            <div className="border-b border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center text-[10px] font-bold text-slate-500 uppercase">
               Time \ Dept
             </div>
 
             {/* Department X-Axis Headers */}
-            {departments.map((dept, colIdx) => (
+            {enabledDepartments.map((dept, colIdx) => (
               <div 
                 key={dept} 
-                className="border-b border-r bg-muted/30 flex items-center justify-center font-bold text-xs text-foreground text-center px-2"
+                className="border-b border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center font-bold text-xs text-slate-800 dark:text-slate-200 text-center px-2"
                 style={{ gridColumn: colIdx + 2, gridRow: 1 }}
               >
                 <Layers className="size-3 mr-1.5 text-primary" /> {dept}
@@ -106,7 +340,7 @@ export function DepartmentCalendar({
             {timeSlots.map((time, rowIdx) => (
               <div 
                 key={time} 
-                className="border-b border-r bg-muted/10 flex items-center justify-center font-mono text-[10px] font-semibold text-muted-foreground"
+                className="border-b border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10 flex items-center justify-center font-mono text-[10px] font-semibold text-slate-500"
                 style={{ gridColumn: 1, gridRow: rowIdx + 2 }}
               >
                 <Clock className="size-3 mr-1 text-slate-500" /> {time}
@@ -115,10 +349,11 @@ export function DepartmentCalendar({
 
             {/* Inactive intersection cells for background grid styling */}
             {timeSlots.map((time, rowIdx) => 
-              departments.map((dept, colIdx) => (
+              enabledDepartments.map((dept, colIdx) => (
                 <div 
                   key={`${rowIdx}-${colIdx}`} 
-                  className="border-b border-r border-slate-800/10"
+                  onClick={() => handleTimeSlotClick(time, dept)}
+                  className="border-b border-r border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-blue-50/30 transition-colors bg-white dark:bg-slate-950"
                   style={{ gridColumn: colIdx + 2, gridRow: rowIdx + 2 }}
                 />
               ))
@@ -126,7 +361,9 @@ export function DepartmentCalendar({
 
             {/* Appointments Rendering Layer */}
             {appointments.map((appt) => {
-              const col = getColIndex(appt.departmentName) + 2;
+              const colIdx = enabledDepartments.findIndex(d => d.trim().toLowerCase() === appt.departmentName?.trim()?.toLowerCase());
+              if (colIdx === -1) return null;
+              const col = colIdx + 2;
               const row = getRowIndex(appt.startTime) + 2;
 
               // Ensure appointment stays inside visible bounds
@@ -168,6 +405,19 @@ export function DepartmentCalendar({
           </div>
         </div>
       </CardContent>
+      {isModalOpen && (
+        <BookAppointmentModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          initialTime={selectedTime}
+          initialDepartment={selectedDept}
+          selectedScheduleDate={selectedDate}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </Card>
   );
 }
