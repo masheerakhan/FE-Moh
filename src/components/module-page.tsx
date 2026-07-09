@@ -23,6 +23,7 @@ export interface ModulePageProps {
   primaryActionConfirmLabel?: string;
   primaryActionSuccessMessage?: (values: Record<string, string>) => string;
   primaryActionOnConfirm?: (values: Record<string, string>) => void;
+  primaryActionOnClick?: () => void;
   stats?: { label: string; value: string; hint?: string }[];
   sections: ModuleSection[];
   workflow?: string[];
@@ -39,6 +40,7 @@ export function ModulePage({
   primaryActionConfirmLabel,
   primaryActionSuccessMessage,
   primaryActionOnConfirm,
+  primaryActionOnClick,
   stats,
   sections,
   workflow,
@@ -191,27 +193,36 @@ export function ModulePage({
               Export
             </Button>
             {primaryAction && (
-              <ActionButton
-                primary
-                label={primaryAction}
-                description={
-                  primaryActionDescription ??
-                  `Trigger the ${primaryAction.toLowerCase()} workflow for ${title}.`
-                }
-                fields={
-                  primaryActionFields ?? [
-                    {
-                      name: "notes",
-                      label: "Notes",
-                      placeholder: "Optional context",
-                      type: "textarea",
-                    },
-                  ]
-                }
-                confirmLabel={primaryActionConfirmLabel ?? primaryAction}
-                successMessage={primaryActionSuccessMessage}
-                onConfirm={primaryActionOnConfirm}
-              />
+              primaryActionOnClick ? (
+                <Button
+                  onClick={primaryActionOnClick}
+                  className="h-10 text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold px-4"
+                >
+                  {primaryAction}
+                </Button>
+              ) : (
+                <ActionButton
+                  primary
+                  label={primaryAction}
+                  description={
+                    primaryActionDescription ??
+                    `Trigger the ${primaryAction.toLowerCase()} workflow for ${title}.`
+                  }
+                  fields={
+                    primaryActionFields ?? [
+                      {
+                        name: "notes",
+                        label: "Notes",
+                        placeholder: "Optional context",
+                        type: "textarea",
+                      },
+                    ]
+                  }
+                  confirmLabel={primaryActionConfirmLabel ?? primaryAction}
+                  successMessage={primaryActionSuccessMessage}
+                  onConfirm={primaryActionOnConfirm}
+                />
+              )
             )}
           </>
         }

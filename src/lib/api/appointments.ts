@@ -15,20 +15,20 @@ export interface Appointment {
 export const appointmentApi = {
   // Fetch appointments list
   getAppointments: async () => {
-    const response = await axiosInstance.get<Appointment[]>("/scheduling/appointments/");
+    const response = await axiosInstance.get<Appointment[]>("/appointments/grid");
     return response.data;
   },
 
   // Create new appointment
   createAppointment: async (data: Omit<Appointment, "id">) => {
-    const response = await axiosInstance.post<Appointment>("/scheduling/appointments/", data);
+    const response = await axiosInstance.post<Appointment>("/appointments/create", data);
     return response.data;
   },
 
   // Update appointment details
   updateAppointment: async (id: string, data: Partial<Appointment>) => {
     const response = await axiosInstance.patch<Appointment>(
-      `/scheduling/appointments/${id}/`,
+      `/appointments/${id}/`,
       data
     );
     return response.data;
@@ -37,7 +37,7 @@ export const appointmentApi = {
   // Cancel appointment
   cancelAppointment: async (id: string) => {
     const response = await axiosInstance.post<{ message: string }>(
-      `/scheduling/appointments/${id}/cancel/`
+      `/appointments/${id}/cancel/`
     );
     return response.data;
   },

@@ -27,7 +27,10 @@ export const Route = createFileRoute("/_app/reception")({
 
 function Reception() {
   const [queueItems, setQueueItems] = useState<any[]>([]);
-  const [activeDoctorId, setActiveDoctorId] = useState<string>("");
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
+  const activeDoctorId = selectedDoctorId;
+  const setActiveDoctorId = setSelectedDoctorId;
 
   const [mobile, setMobile] = useState("");
   const [name, setName] = useState("");
@@ -53,7 +56,8 @@ function Reception() {
   // Appointment Booking States
   const [doctors, setDoctors] = useState<any[]>([]);
   const [bookPatientId, setBookPatientId] = useState("");
-  const [bookDoctorId, setBookDoctorId] = useState("");
+  const bookDoctorId = selectedDoctorId;
+  const setBookDoctorId = setSelectedDoctorId;
   const [bookDate, setBookDate] = useState("");
   const [bookTime, setBookTime] = useState("");
   const [bookingApt, setBookingApt] = useState(false);
@@ -323,18 +327,21 @@ const handlePatientSearch = async (query: string) => {
     setIsLabDialogOpen(true);
   };
 
-  const loadDoctors = async () => {
-    try {
-      const res = await axiosInstance.get("/doctors/");
-      setDoctors(res.data || []);
-      if (res.data && res.data.length > 0) {
-        setActiveDoctorId(res.data[0].id);
-        setBookDoctorId(res.data[0].id);
+  useEffect(() => {
+    const fetchActivePhysicians = async () => {
+      try {
+        // Connects to the primary backend database route for active physicians
+        const response = await secureApi.get('/doctors/active');
+        setDoctors(response.data || []);
+        if (response.data?.length > 0) {
+          setSelectedDoctorId(response.data[0].id); // Default to first doctor found
+        }
+      } catch (err) {
+        console.error("Failed to load active physicians:", err);
       }
-    } catch (err) {
-      console.error("Failed to load doctor profiles", err);
-    }
-  };
+    };
+    fetchActivePhysicians();
+  }, []);
 
   const handleMoveUp = async (index: number) => {
     if (index === 0) return;
@@ -398,7 +405,6 @@ const handlePatientSearch = async (query: string) => {
 
   useEffect(() => {
     refreshQueue();
-    loadDoctors();
     refreshAppointments();
     refreshInvoices();
     loadPatients();
@@ -638,7 +644,7 @@ const handlePatientSearch = async (query: string) => {
                       <p className="text-slate-400 text-xs px-2 leading-relaxed">
                         Launch the clinical onboarding portal to capture demographics, calculate age, verify ABHA, and record vitals.
                       </p>
-                      <Dialog>
+                      <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
                         <DialogTrigger asChild>
                           <Button
                             disabled={!hasAccess("patient.registration", "create")}
@@ -652,6 +658,7 @@ const handlePatientSearch = async (query: string) => {
                             onSuccess={() => {
                               loadPatients();
                               refreshQueue();
+                              setIsRegisterOpen(false);
                             }}
                           />
                         </DialogContent>
@@ -776,7 +783,7 @@ const handlePatientSearch = async (query: string) => {
           </Card>
         )}
 
-        {/* Live Queue Cards */}
+        {/* Live Queue Cards - Commented Out
         {hasAccess("reception.queue", "view") ? (
           <Card className="lg:col-span-2">
             <CardHeader className="flex-row items-center justify-between">
@@ -864,12 +871,13 @@ const handlePatientSearch = async (query: string) => {
             </CardHeader>
           </Card>
         )}
+        */}
       </div>
 
-      {/* Sync Grid: Vertical 15-min calendar + Invoicing */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Scheduler */}
-        <div className="lg:col-span-2 space-y-6">
+      {/* Sync Grid: Vertical 15-min calendar */}
+      <div className="w-full">
+        {/* Full-width: Scheduler */}
+        <div className="w-full space-y-6">
           {/* Horizontal/Vertical Time Grid */}
           <HorizontalTimeGrid
             appointments={appointments.map((a) => {
@@ -893,71 +901,6 @@ const handlePatientSearch = async (query: string) => {
             onDateChange={() => {}}
             onAppointmentClick={handleAppointmentClick}
           />
-        </div>
-
-        {/* Right 1 Col: Invoicing with 9% CGST & 9% SGST splits */}
-        <div>
-          <Card className="border shadow-elegant bg-card h-full flex flex-col">
-            <CardHeader className="border-b pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Receipt className="size-4 text-primary" /> Invoicing & 18% Indian GST splits
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Audit logs showing CGST (9%) and SGST (9%) calculations.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-y-auto max-h-[580px]">
-              {invoices.length === 0 ? (
-                <div className="p-6 text-center text-xs text-muted-foreground">
-                  No invoices recorded today.
-                </div>
-              ) : (
-                <div className="divide-y text-xs">
-                  {invoices.map((inv) => (
-                    <div key={inv.id} className="p-4 space-y-2 hover:bg-muted/10 transition-colors">
-                      <div className="flex justify-between items-center">
-                        <span className="font-mono text-primary font-bold">{inv.invoice_number}</span>
-                        <Badge
-                          variant="outline"
-                          className={
-                            inv.status === "PAID"
-                              ? "bg-success/10 text-success border-success/30 hover:bg-success/10 text-[9px] h-5 rounded-sm"
-                              : "bg-warning/10 text-warning border-warning/30 hover:bg-warning/10 text-[9px] h-5 rounded-sm"
-                          }
-                        >
-                          {inv.status}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground text-[11px]">
-                        <span>Patient: {inv.patient_name || "Profile"}</span>
-                        <span>{inv.date}</span>
-                      </div>
-                      
-                      {/* GST ledger breakdowns */}
-                      <div className="border-t border-dashed pt-2 space-y-1 text-[11px] font-mono">
-                        <div className="flex justify-between">
-                          <span>Base Cost:</span>
-                          <span>₹{parseFloat(inv.sub_total).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>CGST (9.0%):</span>
-                          <span>₹{parseFloat(inv.cgst_amount).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>SGST (9.0%):</span>
-                          <span>₹{parseFloat(inv.sgst_amount).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between border-t font-bold text-foreground pt-1 text-xs">
-                          <span>Ledger Total:</span>
-                          <span>₹{parseFloat(inv.total_amount).toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
 

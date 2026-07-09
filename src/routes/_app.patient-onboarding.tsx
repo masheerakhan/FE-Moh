@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PatientRegistrationForm } from "@/components/patient-registration-form";
 import { patientApi } from "@/lib/api";
-import { Users, Search, UserPlus, ShieldCheck } from "lucide-react";
+import { Users, Search, UserPlus, ShieldCheck, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/_app/patient-onboarding")({
   head: () => ({ meta: [{ title: "Patient Onboarding — MOH CLINICS" }] }),
@@ -19,6 +19,8 @@ export const Route = createFileRoute("/_app/patient-onboarding")({
 function PatientOnboarding() {
   const [patients, setPatients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<any | null>(null);
 
   const loadPatients = async () => {
     try {
@@ -61,16 +63,28 @@ function PatientOnboarding() {
         title="Patient Intake & Onboarding Portal"
         subtitle="Consolidated patient database directory, demographics registry, and national ABHA verification pipeline."
         actions={
-          <Dialog>
+          <Dialog open={isRegisterOpen} onOpenChange={(open) => {
+            setIsRegisterOpen(open);
+            if (!open) setEditingPatient(null);
+          }}>
             <DialogTrigger asChild>
-              <Button className="h-10 text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold gap-2">
+              <Button
+                onClick={() => {
+                  setEditingPatient(null);
+                  setIsRegisterOpen(true);
+                }}
+                className="h-10 text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold gap-2"
+              >
                 <UserPlus className="size-4" /> Onboard New Patient
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-950 border-slate-800 p-1 text-white">
               <PatientRegistrationForm
+                initialData={editingPatient}
                 onSuccess={() => {
                   loadPatients();
+                  setIsRegisterOpen(false);
+                  setEditingPatient(null);
                 }}
               />
             </DialogContent>
@@ -128,10 +142,11 @@ function PatientOnboarding() {
           <div className="divide-y text-sm">
             <div className="grid grid-cols-12 px-6 py-3 text-xs text-muted-foreground font-semibold bg-muted/5">
               <div className="col-span-3">Patient Name</div>
-              <div className="col-span-3">Phone Number</div>
+              <div className="col-span-2">Phone Number</div>
               <div className="col-span-2">Gender</div>
               <div className="col-span-2">Date of Birth</div>
               <div className="col-span-2 text-right">ABHA Status</div>
+              <div className="col-span-1 text-right">Action</div>
             </div>
             {filteredPatients.length === 0 ? (
               <div className="px-6 py-12 text-center text-muted-foreground text-xs">
@@ -143,7 +158,7 @@ function PatientOnboarding() {
                   <div className="col-span-3 font-medium text-slate-400">
                     {p.first_name} {p.last_name || ""}
                   </div>
-                  <div className="col-span-3 font-mono text-xs">{p.phone || "N/A"}</div>
+                  <div className="col-span-2 font-mono text-xs">{p.phone || "N/A"}</div>
                   <div className="col-span-2 capitalize text-xs">{p.gender?.toLowerCase() || "N/A"}</div>
                   <div className="col-span-2 font-mono text-xs">{p.date_of_birth || "N/A"}</div>
                   <div className="col-span-2 text-right">
@@ -162,6 +177,19 @@ function PatientOnboarding() {
                         "UNVERIFIED"
                       )}
                     </Badge>
+                  </div>
+                  <div className="col-span-1 text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-teal-400 hover:bg-teal-450/10"
+                      onClick={() => {
+                        setEditingPatient(p);
+                        setIsRegisterOpen(true);
+                      }}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))

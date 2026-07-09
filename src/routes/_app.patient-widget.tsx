@@ -83,7 +83,7 @@ function PatientWidgetPage() {
 
       // Run concurrent API requests
       const [apptsData, invoicesData, labReportsData, vitalsData, measurementsData, structuredLabsData] = await Promise.all([
-        axiosInstance.get("/scheduling/appointments/").then((r) => r.data).catch(() => []),
+        axiosInstance.get("/appointments/grid").then((r) => r.data).catch(() => []),
         axiosInstance.get("/billing/invoices/").then((r) => r.data).catch(() => []),
         axiosInstance.get("/reception/lab-reports/").then((r) => r.data).catch(() => []),
         axiosInstance.get("/reception/vitals/").then((r) => r.data).catch(() => []),

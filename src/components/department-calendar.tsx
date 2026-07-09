@@ -16,7 +16,7 @@ interface Appointment {
   patientName: string;
   departmentName: string;
   startTime: string; // e.g. "09:15", "10:30"
-  status: "CONFIRMED" | "PENDING" | "CANCELLED";
+  status: string;
 }
 
 interface DepartmentCalendarProps {
@@ -24,6 +24,7 @@ interface DepartmentCalendarProps {
   departments: string[];
   selectedDate?: string;
   onDateChange?: (date: string) => void;
+  onAppointmentClick?: (id: string | number) => void;
 }
 
 interface CustomDatePickerProps {
@@ -218,6 +219,7 @@ export function DepartmentCalendar({
   departments = ["General Medicine", "Cardiology", "Pediatrics", "Endocrinology"],
   selectedDate = new Date().toISOString().slice(0, 10),
   onDateChange,
+  onAppointmentClick,
 }: DepartmentCalendarProps) {
   const [enabledDepartments, setEnabledDepartments] = useState<string[]>([
     'General Medicine', 'Cardiology', 'Pediatrics', 'Endocrinology'
@@ -225,7 +227,7 @@ export function DepartmentCalendar({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedDept, setSelectedDept] = useState("");
-  const [popoverAnchor, setPopoverAnchor] = useState<{ time: string; dept: string } | null>(null);
+  const [popoverAnchor, setPopoverAnchor] = useState<{ time: string; columnId: string } | null>(null);
   const [quickStart, setQuickStart] = useState<string>('');
   const [quickEnd, setQuickEnd] = useState<string>('');
 
@@ -273,35 +275,34 @@ export function DepartmentCalendar({
               Live department scheduler grid showing intersecting 15-minute time slots.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs flex items-center gap-1">
-                  Departments <ChevronDown className="size-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-white">
-                {departments.map((dept) => {
-                  const isChecked = enabledDepartments.includes(dept);
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={dept}
-                      checked={isChecked}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setEnabledDepartments([...enabledDepartments, dept]);
-                        } else {
-                          setEnabledDepartments(enabledDepartments.filter((d) => d !== dept));
-                        }
-                      }}
-                      className="text-xs hover:bg-slate-800 focus:bg-slate-800"
-                    >
-                      {dept}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-1 min-w-[220px]">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                Filter view
+              </label>
+              <div className="relative group">
+                <select
+                  value={enabledDepartments.length === 1 ? enabledDepartments[0] : 'ALL'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEnabledDepartments(val === 'ALL' ? ['General Medicine', 'Cardiology', 'Pediatrics', 'Endocrinology'] : [val]);
+                  }}
+                  className="w-full bg-slate-50 text-slate-700 border border-slate-200 rounded-xl pl-3 pr-10 py-2 text-sm font-semibold tracking-tight outline-none shadow-sm transition-all duration-200 hover:bg-white hover:border-indigo-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 cursor-pointer appearance-none"
+                >
+                  <option value="ALL">All Clinic Departments</option>
+                  <option value="General Medicine">🩺 General Medicine</option>
+                  <option value="Cardiology">❤️ Cardiology</option>
+                  <option value="Pediatrics">👶 Pediatrics</option>
+                  <option value="Endocrinology">🩸 Endocrinology</option>
+                </select>
+                
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 transition-colors group-hover:text-indigo-500">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
             <CustomDatePicker 
               selectedDate={selectedDate} 
               onChange={(date) => onDateChange?.(date)} 
@@ -380,12 +381,17 @@ export function DepartmentCalendar({
                   }}
                 >
                   <div 
+                    onClick={() => onAppointmentClick?.(appt.id)}
                     className={`h-full w-full rounded p-1.5 flex flex-col justify-between border shadow-sm transition-all hover:scale-[1.02] cursor-pointer ${
-                      appt.status === "CONFIRMED"
+                      appt.status === "CONFIRMED" || appt.status === "BOOKED"
                         ? "bg-success/15 border-success/30 text-success-foreground"
-                        : appt.status === "CANCELLED"
-                          ? "bg-destructive/15 border-destructive/30 text-destructive-foreground"
-                          : "bg-warning/15 border-warning/30 text-warning-foreground"
+                        : appt.status === "CHECKED_IN"
+                          ? "bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400"
+                          : appt.status === "CHECKED_OUT"
+                            ? "bg-purple-500/15 border-purple-500/30 text-purple-600 dark:text-purple-400"
+                            : appt.status === "CANCELLED"
+                              ? "bg-destructive/15 border-destructive/30 text-destructive-foreground"
+                              : "bg-warning/15 border-warning/30 text-warning-foreground"
                     }`}
                   >
                     <div className="font-bold text-[10px] truncate leading-tight">
@@ -394,7 +400,7 @@ export function DepartmentCalendar({
                     <div className="flex justify-between items-center text-[8px] font-mono leading-none">
                       <span>{appt.startTime}</span>
                       <Badge variant="outline" className="text-[8px] h-3 px-1 py-0 border-current bg-transparent uppercase">
-                        {appt.status.slice(0, 4)}
+                        {appt.status.replace('_', ' ')}
                       </Badge>
                     </div>
                   </div>

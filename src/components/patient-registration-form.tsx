@@ -10,9 +10,12 @@ import { patientApi, schedulingApi, axiosInstance } from "@/lib/api";
 
 interface PatientRegistrationFormProps {
   onSuccess?: () => void;
+  initialData?: any; // Used for the new edit mode
 }
 
-export function PatientRegistrationForm({ onSuccess }: PatientRegistrationFormProps) {
+const secureApi = axiosInstance;
+
+export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegistrationFormProps) {
   const [loading, setLoading] = useState(false);
 
   // Form States
@@ -75,6 +78,38 @@ export function PatientRegistrationForm({ onSuccess }: PatientRegistrationFormPr
     };
     fetchDoctors();
   }, []);
+
+  // Load initialData for edit mode
+  useEffect(() => {
+    if (initialData) {
+      setFirstName(initialData.first_name || "");
+      setMiddleName(initialData.middle_name || "");
+      setLastName(initialData.last_name || "");
+      setDob(initialData.date_of_birth || "");
+      if (initialData.date_of_birth) {
+        handleDobChange(initialData.date_of_birth);
+      }
+      setGender(initialData.gender === "MALE" ? "Male" : initialData.gender === "FEMALE" ? "Female" : initialData.gender || "Male");
+      setPhone(initialData.phone || "");
+      setAlternatePhone(initialData.alternate_phone || "");
+      setEmail(initialData.email || "");
+      setLanguage(initialData.preferred_language || "English");
+      setGuardianName(initialData.guardian_name || "");
+      setAnniversary(initialData.marriage_anniversary || "");
+      setReferredBy(initialData.referred_by_doctor || "");
+      setHomeAddress(initialData.home_address || "");
+      setAbhaInput(initialData.abha_number || "");
+      setAbhaStatus(initialData.abha_status || "UNVERIFIED");
+      setEmergencyName(initialData.emergency_contact_name || "");
+      setEmergencyPhone(initialData.emergency_contact_phone || "");
+      setAllergies(initialData.known_allergies || "");
+      setConditions(initialData.chronic_conditions || "");
+      setWeight(initialData.weight ? String(initialData.weight) : "");
+      setHeight(initialData.height ? String(initialData.height) : "");
+      setBp(initialData.blood_pressure || "");
+      setInsurance(initialData.insurance_policy || "");
+    }
+  }, [initialData]);
 
   // Auto-calculate Age when DOB changes
   const handleDobChange = (val: string) => {
@@ -185,46 +220,52 @@ export function PatientRegistrationForm({ onSuccess }: PatientRegistrationFormPr
       return;
     }
 
+    const payload = {
+      first_name: firstName.trim(),
+      middle_name: middleName.trim() || undefined,
+      last_name: lastName.trim(),
+      phone: phone.trim(),
+      alternate_phone: alternatePhone.trim() || undefined,
+      email: email.trim() || undefined,
+      gender: gender.toUpperCase(),
+      date_of_birth: dob,
+      preferred_language: language,
+      guardian_name: guardianName.trim() || undefined,
+      marriage_anniversary: anniversary || undefined,
+      referred_by_doctor: referredBy.trim() || undefined,
+      home_address: homeAddress.trim() || undefined,
+      abha_number: abhaDetails?.abha_number || undefined,
+      abha_address: abhaDetails?.abha_address || undefined,
+      abha_status: abhaStatus,
+      emergency_contact_name: emergencyName.trim() || undefined,
+      emergency_contact_phone: emergencyPhone.trim() || undefined,
+      known_allergies: allergies.trim() || undefined,
+      chronic_conditions: conditions.trim() || undefined,
+      weight: weight ? parseFloat(weight) : undefined,
+      height: height ? parseFloat(height) : undefined,
+      blood_pressure: bp.trim() || undefined,
+      insurance_policy: insurance.trim() || undefined,
+    };
+
     setLoading(true);
     try {
-      const payload = {
-        first_name: firstName.trim(),
-        middle_name: middleName.trim() || undefined,
-        last_name: lastName.trim(),
-        phone: phone.trim(),
-        alternate_phone: alternatePhone.trim() || undefined,
-        email: email.trim() || undefined,
-        gender: gender.toUpperCase(),
-        date_of_birth: dob,
-        preferred_language: language,
-        guardian_name: guardianName.trim() || undefined,
-        marriage_anniversary: anniversary || undefined,
-        referred_by_doctor: referredBy.trim() || undefined,
-        home_address: homeAddress.trim() || undefined,
-        abha_number: abhaDetails?.abha_number || undefined,
-        abha_address: abhaDetails?.abha_address || undefined,
-        abha_status: abhaStatus,
-        emergency_contact_name: emergencyName.trim() || undefined,
-        emergency_contact_phone: emergencyPhone.trim() || undefined,
-        known_allergies: allergies.trim() || undefined,
-        chronic_conditions: conditions.trim() || undefined,
-        weight: weight ? parseFloat(weight) : undefined,
-        height: height ? parseFloat(height) : undefined,
-        blood_pressure: bp.trim() || undefined,
-        insurance_policy: insurance.trim() || undefined,
-      };
-
-      const createdPatient = await patientApi.create(payload);
-      toast.success("Patient Onboarded successfully!", {
-        description: `Active record created with ID: "${createdPatient.id}" and bound contextually to tenant database.`
-      });
+      let responseData;
+      if (initialData?.id) {
+        const response = await secureApi.put(`/patients/${initialData.id}/`, payload);
+        responseData = response.data;
+        toast.success("Patient updated successfully!");
+      } else {
+        const response = await secureApi.post('/patients/', payload);
+        responseData = response.data;
+        toast.success("Patient registered successfully!");
+      }
 
       // Handle Auto-Enqueue to Live Consultation Queue
-      if (autoEnqueue && selectedDoctorId) {
+      if (!initialData?.id && autoEnqueue && selectedDoctorId) {
         try {
-          await schedulingApi.issueToken(createdPatient.id!, selectedDoctorId);
+          await schedulingApi.issueToken(responseData.id!, selectedDoctorId);
           toast.success("Token Issued Successfully", {
-            description: `Patient ${createdPatient.first_name} enqueued in live consultation queue.`
+            description: `Patient ${responseData.first_name} enqueued in live consultation queue.`
           });
         } catch (queueErr) {
           console.warn("Failed to issue token for registered patient", queueErr);
@@ -234,44 +275,51 @@ export function PatientRegistrationForm({ onSuccess }: PatientRegistrationFormPr
       handleClear();
       onSuccess?.();
     } catch (err: any) {
-      console.warn("Backend patient registration failed, falling back to mock persistence context", err);
+      console.warn("Backend patient registration/update failed, falling back to mock persistence context", err);
       
-      // Sandbox mock fallback simulation
-      const mockPatient = {
-        id: `pat_mock_${Date.now()}`,
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone,
-        gender: gender.toUpperCase(),
-        date_of_birth: dob,
-        abha_number: abhaInput || undefined,
-        abha_status: abhaStatus
-      };
-      
-      const currentPatients = JSON.parse(localStorage.getItem("mock_patients") || "[]");
-      currentPatients.push(mockPatient);
-      localStorage.setItem("mock_patients", JSON.stringify(currentPatients));
-
-      if (autoEnqueue && selectedDoctorId) {
-        const mockQueueItem = {
-          id: `q_mock_${Date.now()}`,
-          patient_id: mockPatient.id,
-          patient: `${mockPatient.first_name} ${mockPatient.last_name || ""}`.trim(),
-          doctor_id: selectedDoctorId,
-          doctor: doctorsList.find(d => d.id === selectedDoctorId)?.name || "Doctor",
-          token: `T-${100 + Math.floor(Math.random() * 900)}`,
-          sequence: currentPatients.length + 1,
-          status: "WAITING",
-          check_in_time: new Date().toISOString(),
-          estimated_wait_time: 15,
-          wait: "15 min"
+      if (initialData?.id) {
+        const currentPatients = JSON.parse(localStorage.getItem("mock_patients") || "[]");
+        const updatedPatients = currentPatients.map((p: any) => p.id === initialData.id ? { ...p, ...payload, id: initialData.id } : p);
+        localStorage.setItem("mock_patients", JSON.stringify(updatedPatients));
+        toast.success("Simulated Patient Update Success (Mock Sandbox fallback).");
+      } else {
+        // Sandbox mock fallback simulation
+        const mockPatient = {
+          id: `pat_mock_${Date.now()}`,
+          first_name: firstName,
+          last_name: lastName,
+          phone: phone,
+          gender: gender.toUpperCase(),
+          date_of_birth: dob,
+          abha_number: abhaInput || undefined,
+          abha_status: abhaStatus
         };
-        const currentQueue = JSON.parse(localStorage.getItem("mock_queue_items") || "[]");
-        currentQueue.push(mockQueueItem);
-        localStorage.setItem("mock_queue_items", JSON.stringify(currentQueue));
+        
+        const currentPatients = JSON.parse(localStorage.getItem("mock_patients") || "[]");
+        currentPatients.push(mockPatient);
+        localStorage.setItem("mock_patients", JSON.stringify(currentPatients));
+
+        if (autoEnqueue && selectedDoctorId) {
+          const mockQueueItem = {
+            id: `q_mock_${Date.now()}`,
+            patient_id: mockPatient.id,
+            patient: `${mockPatient.first_name} ${mockPatient.last_name || ""}`.trim(),
+            doctor_id: selectedDoctorId,
+            doctor: doctorsList.find(d => d.id === selectedDoctorId)?.name || "Doctor",
+            token: `T-${100 + Math.floor(Math.random() * 900)}`,
+            sequence: currentPatients.length + 1,
+            status: "WAITING",
+            check_in_time: new Date().toISOString(),
+            estimated_wait_time: 15,
+            wait: "15 min"
+          };
+          const currentQueue = JSON.parse(localStorage.getItem("mock_queue_items") || "[]");
+          currentQueue.push(mockQueueItem);
+          localStorage.setItem("mock_queue_items", JSON.stringify(currentQueue));
+        }
+        
+        toast.success("Simulated Registration Success (Mock Sandbox fallback).");
       }
-      
-      toast.success("Simulated Registration Success (Mock Sandbox fallback).");
       handleClear();
       onSuccess?.();
     } finally {

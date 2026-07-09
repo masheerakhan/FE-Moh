@@ -125,11 +125,19 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   
   const { permissions, userContext } = useRBAC();
 
-  // Read active user session from localStorage
-  const [user, setUser] = useState(() => {
+  const [user, setUser] = useState<any>(defaultUser);
+  const [isClient, setIsClient] = useState(false);
+
+  // Read active user session from localStorage safely on client mount
+  useEffect(() => {
     const saved = localStorage.getItem("active_user");
-    return saved ? JSON.parse(saved) : defaultUser;
-  });
+    if (saved) {
+      try {
+        setUser(JSON.parse(saved));
+      } catch (e) {}
+    }
+    setIsClient(true);
+  }, []);
 
   // Keep state synced with localStorage changes
   useEffect(() => {
@@ -149,6 +157,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthorized = checkPathWithRBAC(activeRole, activePerms, activeModules, pathname);
 
   useEffect(() => {
+    // Don't run auth checks until localStorage has been read on the client
+    if (!isClient) return;
+
     const token = localStorage.getItem("token");
     if (!token) {
       navigate({ to: "/login" });
@@ -176,9 +187,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         navigate({ to: "/" });
       }
     }
-  }, [pathname, user, navigate, isAuthorized]);
+  }, [pathname, user, navigate, isAuthorized, isClient]);
+
+  if (!isClient) {
+    return null;
+  }
 
   // Strip unauthorized components completely from the DOM tree
+  // Only after client has hydrated from localStorage
   if (!isAuthorized) {
     return null;
   }
