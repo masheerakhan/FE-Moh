@@ -18,6 +18,8 @@ const secureApi = axiosInstance;
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HorizontalTimeGrid } from "@/components/horizontal-time-grid";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { PatientHistoryModal } from "@/components/modals/patient-history-modal";
+import { Clock } from "lucide-react";
 import { PatientRegistrationForm } from "@/components/patient-registration-form";
 
 export const Route = createFileRoute("/_app/reception")({
@@ -62,6 +64,11 @@ function Reception() {
   const [bookTime, setBookTime] = useState("");
   const [bookingApt, setBookingApt] = useState(false);
   const [isLabDialogOpen, setIsLabDialogOpen] = useState(false);
+  
+  // Patient History states
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyPatientId, setHistoryPatientId] = useState("");
+  const [historyPatientName, setHistoryPatientName] = useState("");
 
   const [receptionistPermissions, setReceptionistPermissions] = useState<Record<string, string[]>>({
     "patient.registration": ["view", "create", "update"],
@@ -685,14 +692,29 @@ const handlePatientSearch = async (query: string) => {
                                <div className="font-medium text-sm">{p.first_name} {p.last_name || ''}</div>
                               <div className="text-xs text-muted-foreground">{p.phone || 'No phone'}</div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7 px-2"
-                              onClick={() => handleReQueue(p)}
-                            >
-                              Re-Queue
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 px-2"
+                                onClick={() => handleReQueue(p)}
+                              >
+                                Re-Queue
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 px-2 gap-1 text-teal-650 border-teal-200 hover:bg-teal-50"
+                                onClick={() => {
+                                  setHistoryPatientId(p.id);
+                                  setHistoryPatientName(`${p.first_name} ${p.last_name || ""}`);
+                                  setIsHistoryOpen(true);
+                                }}
+                              >
+                                <Clock className="size-3" />
+                                <span>History</span>
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -953,6 +975,13 @@ const handlePatientSearch = async (query: string) => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <PatientHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        patientId={historyPatientId}
+        patientName={historyPatientName}
+      />
     </div>
   );
 }

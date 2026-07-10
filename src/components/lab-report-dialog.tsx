@@ -78,8 +78,14 @@ export function LabReportDialog({
       toast.success(`Lab Report saved for ${patientName}`);
       if (onSaveSuccess) onSaveSuccess();
       onClose();
-    } catch (err) {
-      toast.error("Failed to save lab report.");
+    } catch (err: any) {
+      if (err.response) {
+        console.error("Django Validation Error:", err.response.data);
+        toast.error(`Error: ${JSON.stringify(err.response.data)}`);
+      } else {
+        console.error("Network Error:", err.message);
+        toast.error("Network error. Check backend logs.");
+      }
     } finally {
       setLoading(false);
     }

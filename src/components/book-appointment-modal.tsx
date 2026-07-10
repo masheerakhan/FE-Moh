@@ -20,26 +20,6 @@ interface Doctor {
   specialization?: string;
 }
 
-const generateTimeOptions = () => {
-  const options = [];
-  let currentHour = 9;
-  let currentMin = 30;
-  
-  while (currentHour < 18 || (currentHour === 18 && currentMin === 0)) {
-    const hh = String(currentHour).padStart(2, "0");
-    const mm = String(currentMin).padStart(2, "0");
-    options.push(`${hh}:${mm}`);
-    
-    currentMin += 5;
-    if (currentMin >= 60) {
-      currentHour += 1;
-      currentMin = 0;
-    }
-  }
-  return options;
-};
-
-const timeOptions = generateTimeOptions();
 
 interface BookAppointmentModalProps {
   isOpen: boolean;
@@ -67,6 +47,7 @@ export function BookAppointmentModal({
 
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
+  const [isLoadingDoctors, setIsLoadingDoctors] = useState<boolean>(true);
   const [selectedDept, setSelectedDept] = useState<string>('General Medicine'); // Tracks selected department button
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
   const activeDoctorId = selectedDoctorId;
@@ -77,11 +58,15 @@ export function BookAppointmentModal({
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        const response = await secureApi.get(`/doctors/active/`);
-        setDoctorsList(response.data || []);
-      } catch (err) {
-        console.error("Error fetching active doctors:", err);
+        setIsLoadingDoctors(true);
+        const response = await secureApi.get(`/doctors/`);
+        const fetchedDocs = Array.isArray(response.data) ? response.data : response.data?.results || [];
+        setDoctorsList(fetchedDocs);
+      } catch (err: any) {
+        console.error("Doctor fetch error:", err.response?.data || err);
         setDoctorsList([]);
+      } finally {
+        setIsLoadingDoctors(false);
       }
     };
     fetchDoctors();
@@ -200,12 +185,12 @@ export function BookAppointmentModal({
 
   // Auto-select doctor if list updates
   useEffect(() => {
-    if (filteredDoctorsList.length > 0) {
-      setSelectedDoctorId(filteredDoctorsList[0].id);
+    if (doctorsList.length > 0) {
+      setSelectedDoctorId(doctorsList[0].id);
     } else {
       setSelectedDoctorId("");
     }
-  }, [filteredDoctorsList]);
+  }, [doctorsList]);
 
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,21 +237,21 @@ export function BookAppointmentModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <div className="relative w-full max-w-3xl mx-auto bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden sm:m-4 m-2 text-slate-100">
+      <div className="relative w-full max-w-3xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden sm:m-4 m-2 text-slate-900">
         
         {/* Modal Header */}
-        <div className="px-8 py-5 border-b border-slate-800 flex justify-between items-center bg-[#141e33]">
+        <div className="px-8 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Calendar className="size-5 text-teal-400" /> Book Appointment Slot
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Calendar className="size-5 text-teal-650" /> Book Appointment Slot
             </h3>
-            <p className="text-xs text-slate-400 font-mono mt-1">
+            <p className="text-xs text-slate-650 font-mono mt-1">
               Schedule Date: {selectedScheduleDate}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="p-2 hover:bg-slate-200 rounded-lg text-slate-650 hover:text-slate-900 transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -277,7 +262,7 @@ export function BookAppointmentModal({
           
           {/* Patient Search Autocomplete */}
           <div className="relative" ref={dropdownRef}>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
               Search Patient (Name, Phone or ID) *
             </label>
             <div className="relative">
@@ -290,7 +275,7 @@ export function BookAppointmentModal({
                   setPatientQuery(e.target.value);
                   setIsPatientDropdownOpen(true);
                 }}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 pl-10 text-base text-white focus:outline-none focus:ring-2 focus:ring-teal-500 h-11"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent h-11 pl-10"
                 required
               />
               <Search className="absolute left-3 top-3 size-4 text-slate-500" />
@@ -301,7 +286,7 @@ export function BookAppointmentModal({
                     setSelectedPatient(null);
                     setPatientQuery("");
                   }}
-                  className="absolute right-3 top-3 text-xs font-bold text-teal-400 hover:text-teal-300 hover:underline"
+                  className="absolute right-3 top-3 text-xs font-bold text-teal-650 hover:text-teal-300 hover:underline"
                 >
                   Change
                 </button>
@@ -310,7 +295,7 @@ export function BookAppointmentModal({
 
             {/* Autocomplete Dropdown List */}
             {isPatientDropdownOpen && searchResults.length > 0 && !selectedPatient && (
-              <div className="absolute left-0 right-0 mt-1 bg-slate-950 border border-slate-800 rounded shadow-xl z-50 divide-y divide-slate-900 max-h-[160px] overflow-y-auto">
+              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded shadow-xl z-50 divide-y divide-slate-900 max-h-[160px] overflow-y-auto">
                 {searchResults.map((p) => (
                   <div
                     key={p.id}
@@ -318,12 +303,12 @@ export function BookAppointmentModal({
                       setSelectedPatient(p);
                       setIsPatientDropdownOpen(false);
                     }}
-                    className="px-4 py-3 hover:bg-slate-800 cursor-pointer text-sm flex flex-col"
+                    className="px-4 py-3 hover:bg-slate-200 cursor-pointer text-sm flex flex-col"
                   >
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-slate-900">
                       {p.first_name} {p.last_name || ""}
                     </span>
-                    <span className="text-xs text-slate-400 font-mono mt-0.5">
+                    <span className="text-xs text-slate-650 font-mono mt-0.5">
                       Phone: {p.phone || "N/A"} | ID: {p.id.slice(0, 8)}...
                     </span>
                   </div>
@@ -333,7 +318,7 @@ export function BookAppointmentModal({
             
             {/* Add Patient notice */}
             {isPatientDropdownOpen && patientQuery.trim() && searchResults.length === 0 && !selectedPatient && (
-              <div className="absolute left-0 right-0 mt-1 bg-slate-950 border border-slate-800 rounded-lg p-3 text-center text-sm text-slate-400 z-50">
+              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg p-3 text-center text-sm text-slate-650 z-50">
                 No matching patients found. Register patient in the Receptionist list first.
               </div>
             )}
@@ -342,42 +327,39 @@ export function BookAppointmentModal({
           {/* Time Slot Sync Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Start Time *
               </label>
-              <select
+              <input
+                type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-base text-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono h-11"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent font-mono h-11"
+                min="09:30"
+                max="18:00"
                 required
-              >
-                <option value="">Select Start Time</option>
-                {timeOptions.map((time) => (
-                  <option key={time} value={time}>{time}</option>
-                ))}
-              </select>
+              />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 End Time *
               </label>
-              <select
+              <input
+                type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-base text-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono h-11"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent font-mono h-11"
+                min="09:30"
+                max="18:00"
                 required
-              >
-                <option value="">Select End Time</option>
-                {timeOptions.map((time) => (
-                  <option key={time} value={time}>{time}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
+
           {/* Appointment Type/Department Selection Chips */}
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
               Department Category
             </label>
             <div className="flex flex-wrap gap-2">
@@ -390,8 +372,8 @@ export function BookAppointmentModal({
                     onClick={() => setSelectedDepartment(dept)}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${
                       isActive
-                        ? "bg-teal-600 border-teal-500 text-white shadow-sm"
-                        : "bg-slate-900 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500"
+                        ? "bg-teal-600 border-teal-500 text-slate-900 shadow-sm"
+                        : "bg-white border-slate-200 text-slate-650 hover:text-slate-900 hover:border-slate-500"
                     }`}
                   >
                     {dept}
@@ -403,23 +385,26 @@ export function BookAppointmentModal({
 
           {/* Doctor Assignment Selector */}
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
               Assigned Doctor *
             </label>
             <select
               value={activeDoctorId}
               onChange={(e) => setActiveDoctorId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-base text-white focus:outline-none focus:ring-2 focus:ring-teal-500 h-11"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent h-11"
               required
             >
-              {filteredDoctorsList.length === 0 ? (
-                <option value="">No doctors available in {selectedDepartment}</option>
+              {isLoadingDoctors ? (
+                <option value="" disabled>Loading Doctors...</option>
               ) : (
-                filteredDoctorsList.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    Dr. {d.first_name} {d.last_name || ""} ({d.specialization || selectedDepartment})
-                  </option>
-                ))
+                <>
+                  <option value="" disabled>Select a Doctor</option>
+                  {doctorsList.map((doc: any) => (
+                    <option key={doc.id} value={doc.id}>
+                      Dr. {doc.name || `${doc.first_name || ""} ${doc.last_name || ""}`.trim() || "Physician"} ({doc.specialization || doc.specialty || "General Physician"})
+                    </option>
+                  ))}
+                </>
               )}
             </select>
           </div>
@@ -427,7 +412,7 @@ export function BookAppointmentModal({
           {/* Purpose of Visit & Token Number */}
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-2">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Purpose of Visit
               </label>
               <input
@@ -435,11 +420,11 @@ export function BookAppointmentModal({
                 placeholder="e.g. Routine checkup"
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-base text-white focus:outline-none focus:ring-2 focus:ring-teal-500 h-11"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent h-11"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Token No.
               </label>
               <input
@@ -451,7 +436,7 @@ export function BookAppointmentModal({
                   const val = parseInt(e.target.value);
                   setTokenNumber(val > 0 ? val : "");
                 }}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-base text-white focus:outline-none focus:ring-2 focus:ring-teal-500 h-11"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent h-11"
               />
             </div>
           </div>
@@ -461,14 +446,14 @@ export function BookAppointmentModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-slate-300 hover:text-white transition-colors"
+              className="w-full sm:w-auto px-6 py-2.5 bg-slate-200 text-slate-800 text-sm font-medium rounded-lg hover:bg-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-sm font-semibold text-white transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-sm font-semibold text-white transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? "Booking..." : "Book Appointment"}
             </button>

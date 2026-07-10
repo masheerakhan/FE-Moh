@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+
 import { ModulePage } from "@/components/module-page";
 import { Calendar, Check, LogOut, Ban, Trash2, Clock } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +13,8 @@ import { AppointmentSummaryModal } from "@/components/modals/summary-modal";
 import { EditAppointmentModal } from "@/components/modals/edit-modal";
 import { MeasurementsModal } from "@/components/modals/measurements-modal";
 import { LabReportModal } from "@/components/modals/lab-report-modal";
+import { PatientHistoryModal } from "@/components/modals/patient-history-modal";
+import { PatientProfileModal } from "@/components/modals/patient-profile-modal";
 
 const secureApi = axiosInstance;
 
@@ -21,7 +24,9 @@ export const Route = createFileRoute("/_app/appointments")({
 });
 
 function AppointmentsPage() {
+  const navigate = useNavigate();
   const [activeDoctorId, setActiveDoctorId] = useState<string>("");
+
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -30,8 +35,45 @@ function AppointmentsPage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [activeModal, setActiveModal] = useState<'summary' | 'edit' | 'measurements' | 'labReport' | null>(null);
+  const [measurementsInitialData, setMeasurementsInitialData] = useState<any>(null);
+  
+  // History Modal states
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [historyPatientId, setHistoryPatientId] = useState<string>("");
+  const [historyPatientName, setHistoryPatientName] = useState<string>("");
+  
+  // Profile Modal states
+  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [profilePatientId, setProfilePatientId] = useState<string>("");
+  const [profilePatientName, setProfilePatientName] = useState<string>("");
+
+  const [currentLabReport, setCurrentLabReport] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchExistingLabReport = async () => {
+      if (activeModal === 'labReport' && selectedAppointment?.patient_id) {
+        try {
+          const res = await secureApi.get("/reception/structured-lab-reports/");
+          const list = Array.isArray(res.data) ? res.data : res.data?.results || [];
+          const patientReports = list.filter((r: any) => String(r.patient) === String(selectedAppointment.patient_id));
+          if (patientReports.length > 0) {
+            setCurrentLabReport(patientReports[0]);
+          } else {
+            setCurrentLabReport(null);
+          }
+        } catch (err) {
+          console.error("Failed to load existing lab report:", err);
+          setCurrentLabReport(null);
+        }
+      } else {
+        setCurrentLabReport(null);
+      }
+    };
+    fetchExistingLabReport();
+  }, [activeModal, selectedAppointment]);
 
   const filteredAppointments = appointments.filter((app: any) => {
+
     const status = (app.status || '').toUpperCase().trim();
 
     if (statusFilter === 'ALL') return true;
@@ -79,7 +121,17 @@ function AppointmentsPage() {
     try {
       const data = await appointmentApi.getAppointments() as any;
       const list = data.slots || data || [];
-      setAppointments(Array.isArray(list) ? list : []);
+      if (Array.isArray(list)) {
+        const merged = list.map((a: any) => ({
+          ...a,
+          purpose_of_visit: a.purpose_of_visit || a.purpose || "",
+          purpose: a.purpose_of_visit || a.purpose || "",
+          notes: a.notes || "",
+        }));
+        setAppointments(merged);
+      } else {
+        setAppointments([]);
+      }
     } catch (err) {
       console.warn("Failed to fetch appointments", err);
       setAppointments([]);
@@ -311,7 +363,7 @@ function AppointmentsPage() {
                             <Ban className="size-3" />
                             <span>Cancel</span>
                           </button>
-
+ 
                           <button 
                             onClick={() => handleDelete(app.id)} 
                             title="Permanently Delete Appointment"
@@ -375,7 +427,23 @@ function AppointmentsPage() {
           }}
           appointment={selectedAppointment}
           onEdit={() => setActiveModal('edit')}
-          onMeasurements={() => setActiveModal('measurements')}
+          onMeasurements={async () => {
+            try {
+              if (selectedAppointment.patient_id) {
+                const res = await secureApi.get("/reception/measurements/");
+                const list = res.data || [];
+                const patientData = list.filter((m: any) => m.patient === selectedAppointment.patient_id);
+                if (patientData.length > 0) {
+                  setMeasurementsInitialData(patientData[0]);
+                } else {
+                  setMeasurementsInitialData(null);
+                }
+              }
+            } catch (err) {
+              console.error("Failed to load patient measurements:", err);
+            }
+            setActiveModal('measurements');
+          }}
           onLabReport={() => setActiveModal('labReport')}
           onBilling={() => {
             toast.success("Billing route activated for " + (selectedAppointment.patient_name || "Patient"));
@@ -390,12 +458,16 @@ function AppointmentsPage() {
             try {
               await secureApi.patch(`/appointments/${selectedAppointment.id}/`, { notes: noteText });
               toast.success("Notes saved successfully.");
-              refreshAppointments();
-            } catch (e) {
-              console.error("Failed to save note:", e);
-              toast.error("Failed to save note.");
+              await refreshAppointments();
+            } catch (e: any) {
+              console.error("Failed to save note:", e.response?.data || e.message);
+              throw e;
             }
           }}
+          onProfile={(patientId) => {
+            navigate({ to: `/patient-profile/${patientId}` });
+          }}
+
         />
       )}
 
@@ -407,15 +479,25 @@ function AppointmentsPage() {
           appointment={selectedAppointment}
           doctorsList={doctorsList}
           onSave={async (updatedData) => {
+            const purposeVal = updatedData.purpose_of_visit || updatedData.purpose || updatedData.notes || "";
+            const payload = {
+              doctor_id: updatedData.doctor_id,
+              time: updatedData.time || null,
+              end_time: updatedData.end_time || null,
+              purpose_of_visit: purposeVal,
+            };
+            console.log("PATCH Payload:", payload);
             try {
-              await appointmentApi.updateAppointment(selectedAppointment.id, updatedData);
-              toast.success("Appointment updated successfully");
-              setActiveModal(null);
-              setSelectedAppointment(null);
-              refreshAppointments();
-            } catch (e) {
-              console.error("Update failed:", e);
-              toast.error("Failed to update appointment");
+              const response = await secureApi.patch(`/appointments/${selectedAppointment.id}/`, payload);
+              if (response.status === 200 || response.status === 201) {
+                toast.success("Saved to database successfully");
+                setActiveModal(null);
+                setSelectedAppointment(null);
+                await refreshAppointments();
+              }
+            } catch (e: any) {
+              console.error("Backend Error Response:", e.response?.data || e.message);
+              toast.error("Failed to save to database. Check console.");
             }
           }}
         />
@@ -427,19 +509,102 @@ function AppointmentsPage() {
           isOpen={activeModal === 'measurements'}
           onClose={() => setActiveModal('summary')}
           appointment={selectedAppointment}
+          initialData={measurementsInitialData}
           onSave={async (measurementsData) => {
             try {
-              // Convert measurements data to slot notes summary or format for clinical record
-              const formattedNote = ` anthropometrics: Height ${measurementsData.height} ${measurementsData.heightUnit}, Weight ${measurementsData.weight}kg, Waist ${measurementsData.waist}cm, Hip ${measurementsData.hip}cm. BIA: BMI ${measurementsData.bmi}, Fat Mass ${measurementsData.fatMass}kg, Fat % ${measurementsData.fatPercent}%, Muscle ${measurementsData.muscleMass}kg, total water ${measurementsData.totalWater}L.`;
-              const currentNotes = selectedAppointment.notes || "";
-              await secureApi.patch(`/appointments/${selectedAppointment.id}/`, { notes: currentNotes + formattedNote });
-              toast.success("Anthropometrics & BIA saved successfully.");
-              setActiveModal(null);
-              setSelectedAppointment(null);
-              refreshAppointments();
-            } catch (e) {
-              console.error("Measurements save failed:", e);
-              toast.error("Failed to save measurements");
+              if (!selectedAppointment.patient_id) {
+                toast.error("No patient associated with this appointment slot");
+                return;
+              }
+              const payload = {
+                patient: selectedAppointment.patient_id,
+                height: measurementsData.height ? parseFloat(measurementsData.height) : null,
+                weight: measurementsData.weight ? parseFloat(measurementsData.weight) : null,
+                waist_circumference: measurementsData.waist ? parseFloat(measurementsData.waist) : null,
+                hip_circumference: measurementsData.hip ? parseFloat(measurementsData.hip) : null,
+                bmi_device: measurementsData.bmi ? parseFloat(measurementsData.bmi) : null,
+                fat_mass: measurementsData.fatMass ? parseFloat(measurementsData.fatMass) : null,
+                fat_percentage: measurementsData.fatPercent ? parseFloat(measurementsData.fatPercent) : null,
+                skeletal_muscle_mass: measurementsData.muscleMass ? parseFloat(measurementsData.muscleMass) : null,
+                skeletal_muscle_percentage: measurementsData.musclePercent ? parseFloat(measurementsData.musclePercent) : null,
+                lean_mass: measurementsData.leanMass ? parseFloat(measurementsData.leanMass) : null,
+                lean_mass_percentage: measurementsData.leanPercent ? parseFloat(measurementsData.leanPercent) : null,
+                total_water: measurementsData.totalWater ? parseFloat(measurementsData.totalWater) : null,
+                water_percentage: measurementsData.waterPercent ? parseFloat(measurementsData.waterPercent) : null,
+                health_score: measurementsData.healthScore ? parseInt(measurementsData.healthScore) : null,
+                body_age: measurementsData.bodyAge ? parseInt(measurementsData.bodyAge) : null,
+                body_symmetry: measurementsData.bodySymmetry || null,
+                t_score: measurementsData.tScore ? parseFloat(measurementsData.tScore) : null,
+                z_score: measurementsData.zScore ? parseFloat(measurementsData.zScore) : null,
+                
+                subcutaneous_fat_mass: measurementsData.subcutaneousFatMass ? parseFloat(measurementsData.subcutaneousFatMass) : null,
+                subcutaneous_fat_percentage: measurementsData.subcutaneousFatPercent ? parseFloat(measurementsData.subcutaneousFatPercent) : null,
+                visceral_fat_mass: measurementsData.visceralFatMass ? parseFloat(measurementsData.visceralFatMass) : null,
+                visceral_fat_level: measurementsData.visceralFatLevel ? parseFloat(measurementsData.visceralFatLevel) : null,
+                trunk_fat_mass: measurementsData.trunkFat ? parseFloat(measurementsData.trunkFat) : null,
+                left_arm_fat_mass: measurementsData.leftArmFat ? parseFloat(measurementsData.leftArmFat) : null,
+                right_arm_fat_mass: measurementsData.rightArmFat ? parseFloat(measurementsData.rightArmFat) : null,
+                left_leg_fat_mass: measurementsData.leftLegFat ? parseFloat(measurementsData.leftLegFat) : null,
+                right_leg_fat_mass: measurementsData.rightLegFat ? parseFloat(measurementsData.rightLegFat) : null,
+                fat_control: measurementsData.fatControl ? parseFloat(measurementsData.fatControl) : null,
+
+                left_arm_muscle_to_fat_ratio: measurementsData.leftArmMuscFatRatio ? parseFloat(measurementsData.leftArmMuscFatRatio) : null,
+                right_arm_muscle_to_fat_ratio: measurementsData.rightArmMuscFatRatio ? parseFloat(measurementsData.rightArmMuscFatRatio) : null,
+                left_leg_muscle_to_fat_ratio: measurementsData.leftLegMuscFatRatio ? parseFloat(measurementsData.leftLegMuscFatRatio) : null,
+                right_leg_muscle_to_fat_ratio: measurementsData.rightLegMuscFatRatio ? parseFloat(measurementsData.rightLegMuscFatRatio) : null,
+                trunk_muscle_to_fat_ratio: measurementsData.trunkMuscFatRatio ? parseFloat(measurementsData.trunkMuscFatRatio) : null,
+
+                muscle_control: measurementsData.muscleControl ? parseFloat(measurementsData.muscleControl) : null,
+                left_arm_muscle_mass: measurementsData.leftArmMuscle ? parseFloat(measurementsData.leftArmMuscle) : null,
+                right_arm_muscle_mass: measurementsData.rightArmMuscle ? parseFloat(measurementsData.rightArmMuscle) : null,
+                left_leg_muscle_mass: measurementsData.leftLegMuscle ? parseFloat(measurementsData.leftLegMuscle) : null,
+                right_leg_muscle_mass: measurementsData.rightLegMuscle ? parseFloat(measurementsData.rightLegMuscle) : null,
+                trunk_muscle_mass: measurementsData.trunkMuscle ? parseFloat(measurementsData.trunkMuscle) : null,
+                upper_lower_muscle_balance: measurementsData.upperLowerBalance ? parseFloat(measurementsData.upperLowerBalance) : null,
+                trunk_limb_muscle_balance: measurementsData.trunkLimbBalance ? parseFloat(measurementsData.trunkLimbBalance) : null,
+
+                intracellular_water: measurementsData.intracellularWater ? parseFloat(measurementsData.intracellularWater) : null,
+                extracellular_water: measurementsData.extracellularWater ? parseFloat(measurementsData.extracellularWater) : null,
+                water_balance: measurementsData.waterBalance ? parseFloat(measurementsData.waterBalance) : null,
+                protein_mass: measurementsData.proteinMass ? parseFloat(measurementsData.proteinMass) : null,
+                protein_percentage: measurementsData.proteinPercent ? parseFloat(measurementsData.proteinPercent) : null,
+                bone_mass: measurementsData.boneMass ? parseFloat(measurementsData.boneMass) : null,
+                mineral: measurementsData.mineral ? parseFloat(measurementsData.mineral) : null,
+                body_cell_mass: measurementsData.bodyCellMass ? parseFloat(measurementsData.bodyCellMass) : null,
+
+                heart_rate: measurementsData.heartRate ? parseFloat(measurementsData.heartRate) : null,
+                bmr_kcal: measurementsData.bmr ? parseFloat(measurementsData.bmr) : null,
+                recommended_calorie_intake: measurementsData.recommendedCalories ? parseFloat(measurementsData.recommendedCalories) : null,
+                ideal_weight: measurementsData.idealWeight ? parseFloat(measurementsData.idealWeight) : null,
+                weight_control: measurementsData.weightControl ? parseFloat(measurementsData.weightControl) : null,
+                fat_free_mass: measurementsData.fatFreeMass ? parseFloat(measurementsData.fatFreeMass) : null,
+                
+                resistance_5khz: measurementsData.resistance_5khz ? parseFloat(measurementsData.resistance_5khz) : null,
+                resistance_50khz: measurementsData.resistance_50khz ? parseFloat(measurementsData.resistance_50khz) : null,
+                resistance_250khz: measurementsData.resistance_250khz ? parseFloat(measurementsData.resistance_250khz) : null,
+                reactance_5khz: measurementsData.reactance_5khz ? parseFloat(measurementsData.reactance_5khz) : null,
+                reactance_50khz: measurementsData.reactance_50khz ? parseFloat(measurementsData.reactance_50khz) : null,
+                reactance_250khz: measurementsData.reactance_250khz ? parseFloat(measurementsData.reactance_250khz) : null,
+                phase_angle: measurementsData.phase_angle ? parseFloat(measurementsData.phase_angle) : null,
+              };
+
+              
+              let response;
+              if (measurementsInitialData?.id) {
+                response = await secureApi.patch(`/reception/measurements/${measurementsInitialData.id}/`, payload);
+              } else {
+                response = await secureApi.post("/reception/measurements/", payload);
+              }
+              
+              if (response.status === 200 || response.status === 201) {
+                toast.success("Saved to database successfully");
+                setActiveModal(null);
+                setSelectedAppointment(null);
+                await refreshAppointments();
+              }
+            } catch (e: any) {
+              console.error("Database Save Error:", e.response?.data || e.message);
+              toast.error("Failed to save to database. Check console.");
             }
           }}
         />
@@ -451,23 +616,71 @@ function AppointmentsPage() {
           isOpen={activeModal === 'labReport'}
           onClose={() => setActiveModal('summary')}
           appointment={selectedAppointment}
+          initialData={currentLabReport}
+          onViewHistory={() => {
+            setHistoryPatientId(selectedAppointment.patient_id);
+            setHistoryPatientName(selectedAppointment.patient_name || "Patient");
+            setIsHistoryOpen(true);
+          }}
           onSave={async (labData) => {
             try {
-              // Save lab report fields to slot notes summary
-              const formattedNote = ` Lab Report (${labData.reportDate}): HbA1c ${labData.hba1c}%, Fasting ${labData.fastingSugar}mg/dL, Lipid profile (Cholesterol ${labData.cholesterol}, LDL ${labData.ldl}, HDL ${labData.hdl}), Thyroid (TSH ${labData.tsh}, T3 ${labData.t3}, T4 ${labData.t4}), Liver (SGOT ${labData.sgot}, SGPT ${labData.sgpt}), USG (Gallstones ${labData.gallStones || 'Normal'}, Fatty Liver ${labData.fattyLiver || 'Normal'}).`;
-              const currentNotes = selectedAppointment.notes || "";
-              await secureApi.patch(`/appointments/${selectedAppointment.id}/`, { notes: currentNotes + formattedNote });
-              toast.success("Lab report details updated successfully.");
-              setActiveModal(null);
-              setSelectedAppointment(null);
-              refreshAppointments();
-            } catch (e) {
-              console.error("Lab report save failed:", e);
-              toast.error("Failed to save lab report");
+              if (!selectedAppointment.patient_id) {
+                toast.error("No patient associated with this appointment slot");
+                return;
+              }
+              const payload = {
+                patient: selectedAppointment.patient_id,
+                date_of_report: labData.reportDate,
+                hba1c: labData.hba1c ? parseFloat(labData.hba1c) : null,
+                fasting_sugar: labData.fastingSugar ? parseFloat(labData.fastingSugar) : null,
+                pp2_sugar: labData.pp2Sugar ? parseFloat(labData.pp2Sugar) : null,
+                total_cholesterol: labData.cholesterol ? parseFloat(labData.cholesterol) : null,
+                ldl: labData.ldl ? parseFloat(labData.ldl) : null,
+                hdl: labData.hdl ? parseFloat(labData.hdl) : null,
+                triglycerides: labData.triglycerides ? parseFloat(labData.triglycerides) : null,
+                sgot_ast: labData.sgot ? parseFloat(labData.sgot) : null,
+                sgpt_alt: labData.sgpt ? parseFloat(labData.sgpt) : null,
+                gall_stones: labData.gallStones || "Not tested",
+                fatty_liver: labData.fattyLiver || "Not tested",
+                tsh: labData.tsh ? parseFloat(labData.tsh) : null,
+                t3: labData.t3 ? parseFloat(labData.t3) : null,
+                t4: labData.t4 ? parseFloat(labData.t4) : null,
+              };
+
+              let response;
+              if (currentLabReport?.id) {
+                response = await secureApi.patch(`/reception/structured-lab-reports/${currentLabReport.id}/`, payload);
+              } else {
+                response = await secureApi.post("/reception/structured-lab-reports/", payload);
+              }
+              
+              if (response.status === 200 || response.status === 201) {
+                toast.success("Saved to database successfully");
+                setActiveModal(null);
+                setSelectedAppointment(null);
+                await refreshAppointments();
+              }
+            } catch (e: any) {
+              if (e.response) {
+                console.error("Django Validation Error:", e.response.data);
+                toast.error(`Error: ${JSON.stringify(e.response.data)}`);
+              } else {
+                console.error("Network Error:", e.message);
+                toast.error("Network error. Check console/logs.");
+              }
             }
           }}
         />
       )}
+
+      <PatientHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        patientId={historyPatientId}
+        patientName={historyPatientName}
+      />
+
+
     </ModulePage>
   );
 }

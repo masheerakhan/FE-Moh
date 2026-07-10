@@ -13,6 +13,7 @@ interface AppointmentSummaryModalProps {
   onBilling: () => void;
   onDelete: () => void;
   onSaveNote: (note: string) => void;
+  onProfile: (patientId: string) => void;
 }
 
 export function AppointmentSummaryModal({
@@ -25,8 +26,10 @@ export function AppointmentSummaryModal({
   onBilling,
   onDelete,
   onSaveNote,
+  onProfile,
 }: AppointmentSummaryModalProps) {
-  const [note, setNote] = useState(appointment?.notes || "");
+  const [noteText, setNoteText] = useState(appointment?.notes || "");
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   if (!isOpen || !appointment) return null;
 
@@ -124,9 +127,15 @@ export function AppointmentSummaryModal({
               </button>
               <button
                 onClick={onDelete}
-                className="w-full px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-100 cursor-pointer col-span-2 sm:col-span-1"
+                className="w-full px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-100 cursor-pointer"
               >
                 Delete
+              </button>
+              <button 
+                onClick={() => onProfile(appointment.patient_id || appointment.patient)}
+                className="w-full px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+              >
+                Profile
               </button>
             </div>
           </div>
@@ -139,18 +148,26 @@ export function AppointmentSummaryModal({
             <textarea
               className="w-full h-24 bg-white border border-slate-300 text-slate-900 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-3 text-sm resize-none"
               placeholder="Add patient notes, clinical summaries, or reminders..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              value={noteText}
+              disabled={isSavingNote}
+              onChange={(e) => setNoteText(e.target.value)}
             />
             <div className="flex justify-end">
               <button
-                onClick={() => {
-                  onSaveNote(note);
-                  toast.success("Note saved successfully.");
+                disabled={isSavingNote}
+                onClick={async () => {
+                  try {
+                    setIsSavingNote(true);
+                    await onSaveNote(noteText);
+                  } catch (err) {
+                    console.error("Save note error:", err);
+                  } finally {
+                    setIsSavingNote(false);
+                  }
                 }}
-                className="py-1.5 px-4 bg-slate-900 text-white hover:bg-slate-800 rounded-md text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                className="py-1.5 px-4 bg-slate-900 text-white hover:bg-slate-800 rounded-md text-xs font-semibold transition-all shadow-sm cursor-pointer disabled:opacity-50"
               >
-                Save Note
+                {isSavingNote ? "Saving..." : "Save Note"}
               </button>
             </div>
           </div>

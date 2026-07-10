@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -9,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PatientRegistrationForm } from "@/components/patient-registration-form";
 import { patientApi } from "@/lib/api";
-import { Users, Search, UserPlus, ShieldCheck, Pencil } from "lucide-react";
+import { Users, Search, UserPlus, ShieldCheck, Pencil, Clock } from "lucide-react";
+import { PatientHistoryModal } from "@/components/modals/patient-history-modal";
 
 export const Route = createFileRoute("/_app/patient-onboarding")({
   head: () => ({ meta: [{ title: "Patient Onboarding — MOH CLINICS" }] }),
@@ -21,6 +23,11 @@ function PatientOnboarding() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
+  
+  // History Modal states
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyPatientId, setHistoryPatientId] = useState("");
+  const [historyPatientName, setHistoryPatientName] = useState("");
 
   const loadPatients = async () => {
     try {
@@ -78,7 +85,7 @@ function PatientOnboarding() {
                 <UserPlus className="size-4" /> Onboard New Patient
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-950 border-slate-800 p-1 text-white">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white border-slate-200 p-1 text-slate-900">
               <PatientRegistrationForm
                 initialData={editingPatient}
                 onSuccess={() => {
@@ -145,8 +152,8 @@ function PatientOnboarding() {
               <div className="col-span-2">Phone Number</div>
               <div className="col-span-2">Gender</div>
               <div className="col-span-2">Date of Birth</div>
-              <div className="col-span-2 text-right">ABHA Status</div>
-              <div className="col-span-1 text-right">Action</div>
+              <div className="col-span-1 text-right">ABHA Status</div>
+              <div className="col-span-2 text-right">Action</div>
             </div>
             {filteredPatients.length === 0 ? (
               <div className="px-6 py-12 text-center text-muted-foreground text-xs">
@@ -154,19 +161,26 @@ function PatientOnboarding() {
               </div>
             ) : (
               filteredPatients.map((p) => (
-                <div key={p.id} className="grid grid-cols-12 px-6 py-4 items-center hover:bg-muted/5 transition-colors">
-                  <div className="col-span-3 font-medium text-slate-400">
-                    {p.first_name} {p.last_name || ""}
+                <div key={p.id} className="grid grid-cols-12 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                  <div className="col-span-3 font-medium text-slate-900">
+                    <Link
+                      to="/patient-profile/$patientId"
+                      params={{ patientId: p.id }}
+                      className="hover:text-teal-650 hover:underline transition-colors"
+                    >
+                      {p.first_name} {p.last_name || ""}
+                    </Link>
                   </div>
+
                   <div className="col-span-2 font-mono text-xs">{p.phone || "N/A"}</div>
                   <div className="col-span-2 capitalize text-xs">{p.gender?.toLowerCase() || "N/A"}</div>
                   <div className="col-span-2 font-mono text-xs">{p.date_of_birth || "N/A"}</div>
-                  <div className="col-span-2 text-right">
+                  <div className="col-span-1 text-right">
                     <Badge
                       className={
                         p.abha_status === "VERIFIED"
                           ? "bg-success/15 text-success hover:bg-success/15 text-[10px]"
-                          : "bg-slate-800 text-slate-400 hover:bg-slate-800 text-[10px]"
+                          : "bg-slate-200 text-slate-700 hover:bg-slate-200 text-[10px]"
                       }
                     >
                       {p.abha_status === "VERIFIED" ? (
@@ -178,11 +192,11 @@ function PatientOnboarding() {
                       )}
                     </Badge>
                   </div>
-                  <div className="col-span-1 text-right">
+                  <div className="col-span-2 text-right flex items-center justify-end gap-2">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-7 text-teal-400 hover:bg-teal-450/10"
+                      className="size-7 text-teal-650 hover:bg-teal-50 hover:text-teal-700"
                       onClick={() => {
                         setEditingPatient(p);
                         setIsRegisterOpen(true);
@@ -190,6 +204,17 @@ function PatientOnboarding() {
                     >
                       <Pencil className="size-3.5" />
                     </Button>
+                    <button
+                      onClick={() => {
+                        setHistoryPatientId(p.id);
+                        setHistoryPatientName(`${p.first_name} ${p.last_name || ""}`);
+                        setIsHistoryOpen(true);
+                      }}
+                      className="px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded hover:bg-teal-100 transition-colors flex items-center gap-1 shrink-0"
+                    >
+                      <Clock className="size-3" />
+                      History
+                    </button>
                   </div>
                 </div>
               ))
@@ -197,6 +222,13 @@ function PatientOnboarding() {
           </div>
         </CardContent>
       </Card>
+
+      <PatientHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        patientId={historyPatientId}
+        patientName={historyPatientName}
+      />
     </div>
   );
 }

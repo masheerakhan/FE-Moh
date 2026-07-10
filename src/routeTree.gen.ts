@@ -28,6 +28,7 @@ import { Route as AppClinicsRouteImport } from './routes/_app.clinics'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
+import { Route as AppPatientProfilePatientIdRouteImport } from './routes/_app.patient-profile.$patientId'
 import { Route as AppAiScribeRouteImport } from './routes/_app.ai.scribe'
 import { Route as AppAiRiskRouteImport } from './routes/_app.ai.risk'
 import { Route as AppAiReportsRouteImport } from './routes/_app.ai.reports'
@@ -133,6 +134,12 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPatientProfilePatientIdRoute =
+  AppPatientProfilePatientIdRouteImport.update({
+    id: '/patient-profile/$patientId',
+    path: '/patient-profile/$patientId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAiScribeRoute = AppAiScribeRouteImport.update({
   id: '/ai/scribe',
   path: '/ai/scribe',
@@ -213,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/ai/reports': typeof AppAiReportsRoute
   '/ai/risk': typeof AppAiRiskRoute
   '/ai/scribe': typeof AppAiScribeRoute
+  '/patient-profile/$patientId': typeof AppPatientProfilePatientIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -243,6 +251,7 @@ export interface FileRoutesByTo {
   '/ai/reports': typeof AppAiReportsRoute
   '/ai/risk': typeof AppAiRiskRoute
   '/ai/scribe': typeof AppAiScribeRoute
+  '/patient-profile/$patientId': typeof AppPatientProfilePatientIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -275,6 +284,7 @@ export interface FileRoutesById {
   '/_app/ai/reports': typeof AppAiReportsRoute
   '/_app/ai/risk': typeof AppAiRiskRoute
   '/_app/ai/scribe': typeof AppAiScribeRoute
+  '/_app/patient-profile/$patientId': typeof AppPatientProfilePatientIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/ai/reports'
     | '/ai/risk'
     | '/ai/scribe'
+    | '/patient-profile/$patientId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/ai/reports'
     | '/ai/risk'
     | '/ai/scribe'
+    | '/patient-profile/$patientId'
   id:
     | '__root__'
     | '/_app'
@@ -368,6 +380,7 @@ export interface FileRouteTypes {
     | '/_app/ai/reports'
     | '/_app/ai/risk'
     | '/_app/ai/scribe'
+    | '/_app/patient-profile/$patientId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -510,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/patient-profile/$patientId': {
+      id: '/_app/patient-profile/$patientId'
+      path: '/patient-profile/$patientId'
+      fullPath: '/patient-profile/$patientId'
+      preLoaderRoute: typeof AppPatientProfilePatientIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/ai/scribe': {
       id: '/_app/ai/scribe'
       path: '/ai/scribe'
@@ -611,6 +631,7 @@ interface AppRouteChildren {
   AppAiReportsRoute: typeof AppAiReportsRoute
   AppAiRiskRoute: typeof AppAiRiskRoute
   AppAiScribeRoute: typeof AppAiScribeRoute
+  AppPatientProfilePatientIdRoute: typeof AppPatientProfilePatientIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -641,6 +662,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAiReportsRoute: AppAiReportsRoute,
   AppAiRiskRoute: AppAiRiskRoute,
   AppAiScribeRoute: AppAiScribeRoute,
+  AppPatientProfilePatientIdRoute: AppPatientProfilePatientIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

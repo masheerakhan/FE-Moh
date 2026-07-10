@@ -328,8 +328,8 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
   };
 
   return (
-    <Card className="max-w-4xl mx-auto border-slate-800 bg-slate-900/60 backdrop-blur text-white shadow-2xl">
-      <CardHeader className="border-b border-slate-800/80 pb-4">
+    <Card className="max-w-4xl mx-auto border-slate-200 bg-white text-slate-900 border-slate-200 shadow-2xl">
+      <CardHeader className="border-b border-slate-200 pb-4">
         <CardTitle className="text-xl font-bold flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="size-5 text-primary animate-pulse" /> Register New Patient
@@ -344,15 +344,15 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
         <form onSubmit={handleSubmit} className="space-y-6">
           
           {/* ABHA National Identification Verification Handshake */}
-          <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg p-4 space-y-3.5">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-650 flex items-center gap-1.5">
                 <ShieldCheck className="size-4 text-primary" /> ABHA Identity Handshake
               </Label>
               <Badge variant="outline" className={`text-[9px] uppercase font-bold tracking-wide ${
                 abhaStatus === "VERIFIED" ? "bg-success/15 text-success border-success/30" : 
                 abhaStatus === "VERIFYING" ? "bg-warning/15 text-warning border-warning/30 animate-pulse" : 
-                "bg-slate-800/50 text-slate-400 border-slate-700"
+                "bg-slate-800/50 text-slate-650 border-slate-200"
               }`}>
                 {abhaStatus}
               </Badge>
@@ -363,7 +363,7 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
                 placeholder="Enter Aadhaar Number / Mobile / ABHA Address"
                 value={abhaInput}
                 onChange={(e) => setAbhaInput(e.target.value)}
-                className="bg-slate-900 border-slate-800 text-xs text-slate-100 flex-1 h-9"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent h-9 flex-1"
               />
               {!txnId ? (
                 <Button
@@ -371,7 +371,7 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
                   variant="outline"
                   size="sm"
                   onClick={handleGenerateAbhaOtp}
-                  className="h-9 border-slate-800 text-slate-300 bg-slate-900 hover:bg-slate-800 text-xs"
+                  className="h-9 border-slate-200 text-slate-700 bg-white hover:bg-slate-200 text-xs"
                 >
                   Verify ABHA
                 </Button>
@@ -380,7 +380,7 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
                   type="button"
                   size="sm"
                   onClick={handleVerifyAbhaOtp}
-                  className="h-9 bg-success hover:bg-success/90 text-white text-xs"
+                  className="h-9 bg-success hover:bg-success/90 text-slate-900 text-xs"
                 >
                   Confirm OTP
                 </Button>
@@ -388,12 +388,12 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
             </div>
             {txnId && abhaStatus !== "VERIFIED" && (
               <div className="space-y-1.5 animate-fadeIn">
-                <Label className="text-xs text-slate-300">Verification OTP</Label>
+                <Label className="text-xs text-slate-700">Verification OTP</Label>
                 <Input
                   placeholder="Enter 6-Digit OTP (Mock Sandbox code is 123456)"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  className="bg-slate-900 border-slate-800 text-xs text-slate-100 h-9 font-mono"
+                  className="bg-white border-slate-200 text-xs text-slate-900 h-9 font-mono"
                 />
               </div>
             )}
@@ -401,35 +401,35 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
 
           {/* Section: Patient Name */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-650 border-b border-slate-200 pb-1">
               Patient Name
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">First Name <span className="text-destructive">*</span></Label>
+                <Label className="text-xs text-slate-700">First Name <span className="text-destructive">*</span></Label>
                 <Input
                   placeholder="First name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Middle Name</Label>
+                <Label className="text-xs text-slate-700">Middle Name</Label>
                 <Input
                   placeholder="Middle name (optional)"
                   value={middleName}
                   onChange={(e) => setMiddleName(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Last Name <span className="text-destructive">*</span></Label>
+                <Label className="text-xs text-slate-700">Last Name <span className="text-destructive">*</span></Label>
                 <Input
                   placeholder="Last name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
             </div>
@@ -437,35 +437,35 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
 
           {/* Section: Personal Details */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-650 border-b border-slate-200 pb-1">
               Personal Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Date of Birth <span className="text-destructive">*</span></Label>
+                <Label className="text-xs text-slate-700">Date of Birth <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   value={dob}
                   onChange={(e) => handleDobChange(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100 h-10 block"
+                  className="bg-white border-slate-200 text-xs text-slate-900 h-10 block"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Age</Label>
+                <Label className="text-xs text-slate-700">Age</Label>
                 <Input
                   value={age}
                   disabled
                   placeholder="Auto-filled from DOB"
-                  className="bg-slate-950/50 border-slate-800 text-xs text-slate-400 cursor-not-allowed"
+                  className="bg-white/50 border-slate-200 text-xs text-slate-650 cursor-not-allowed"
                 />
                 <span className="text-[10px] text-slate-500 block pl-1">Calculated from DOB</span>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Sex</Label>
+                <Label className="text-xs text-slate-700">Sex</Label>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full h-10 bg-slate-950 border border-slate-800 rounded-md px-2.5 text-xs text-slate-100 font-medium"
+                  className="w-full h-10 bg-white border border-slate-200 rounded-md px-2.5 text-xs text-slate-900 font-medium"
                 >
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -477,36 +477,36 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
 
           {/* Section: Contact Information */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-650 border-b border-slate-200 pb-1">
               Contact Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Phone Number <span className="text-destructive">*</span></Label>
+                <Label className="text-xs text-slate-700">Phone Number <span className="text-destructive">*</span></Label>
                 <Input
                   placeholder="Primary contact number"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Alternate Phone Number</Label>
+                <Label className="text-xs text-slate-700">Alternate Phone Number</Label>
                 <Input
                   placeholder="Secondary number (optional)"
                   value={alternatePhone}
                   onChange={(e) => setAlternatePhone(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Email Address</Label>
+                <Label className="text-xs text-slate-700">Email Address</Label>
                 <Input
                   type="email"
                   placeholder="Email (optional)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
             </div>
@@ -514,16 +514,16 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
 
           {/* Section: Other Details */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-650 border-b border-slate-200 pb-1">
               Other Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Preferred Language</Label>
+                <Label className="text-xs text-slate-700">Preferred Language</Label>
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full h-10 bg-slate-950 border border-slate-800 rounded-md px-2.5 text-xs text-slate-100 font-medium"
+                  className="w-full h-10 bg-white border border-slate-200 rounded-md px-2.5 text-xs text-slate-900 font-medium"
                 >
                   <option value="English">English</option>
                   <option value="Hindi">Hindi</option>
@@ -539,140 +539,140 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Parent / Guardian Name</Label>
+                <Label className="text-xs text-slate-700">Parent / Guardian Name</Label>
                 <Input
                   placeholder="Name of parent or guardian"
                   value={guardianName}
                   onChange={(e) => setGuardianName(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Marriage Anniversary</Label>
+                <Label className="text-xs text-slate-700">Marriage Anniversary</Label>
                 <Input
                   type="date"
                   value={anniversary}
                   onChange={(e) => setAnniversary(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100 h-10 block"
+                  className="bg-white border-slate-200 text-xs text-slate-900 h-10 block"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Referred By Doctor</Label>
+                <Label className="text-xs text-slate-700">Referred By Doctor</Label>
                 <Input
                   placeholder="Referring doctor's name"
                   value={referredBy}
                   onChange={(e) => setReferredBy(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
             </div>
             <div className="space-y-1.5 pt-1">
-              <Label className="text-xs text-slate-300">Home Address</Label>
+              <Label className="text-xs text-slate-700">Home Address</Label>
               <textarea
                 value={homeAddress}
                 onChange={(e) => setHomeAddress(e.target.value)}
                 placeholder="Street, city, state..."
-                className="w-full min-h-[70px] bg-slate-950 border border-slate-800 rounded-md p-3 text-xs text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="w-full min-h-[70px] bg-white border border-slate-200 rounded-md p-3 text-xs text-slate-900 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
           </div>
 
           {/* Section: Clinical Metadata & Emergency */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-650 border-b border-slate-200 pb-1 flex items-center gap-1.5">
               <FileText className="size-4 text-primary" /> Clinical Timeline & Emergency Coordinates
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Emergency Contact Person</Label>
+                <Label className="text-xs text-slate-700">Emergency Contact Person</Label>
                 <Input
                   placeholder="Emergency contact full name"
                   value={emergencyName}
                   onChange={(e) => setEmergencyName(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Emergency Contact Phone</Label>
+                <Label className="text-xs text-slate-700">Emergency Contact Phone</Label>
                 <Input
                   placeholder="Emergency contact mobile number"
                   value={emergencyPhone}
                   onChange={(e) => setEmergencyPhone(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Known Drug/Environmental Allergies</Label>
+                <Label className="text-xs text-slate-700">Known Drug/Environmental Allergies</Label>
                 <textarea
                   value={allergies}
                   onChange={(e) => setAllergies(e.target.value)}
                   placeholder="e.g. Penicillin, Peanuts, Pollen..."
-                  className="w-full min-h-[60px] bg-slate-950 border border-slate-800 rounded-md p-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="w-full min-h-[60px] bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-900 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Primary Chronic Conditions</Label>
+                <Label className="text-xs text-slate-700">Primary Chronic Conditions</Label>
                 <textarea
                   value={conditions}
                   onChange={(e) => setConditions(e.target.value)}
                   placeholder="e.g. Type 2 Diabetes, Hypertension, Asthma..."
-                  className="w-full min-h-[60px] bg-slate-950 border border-slate-800 rounded-md p-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="w-full min-h-[60px] bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-900 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Weight (kg)</Label>
+                <Label className="text-xs text-slate-700">Weight (kg)</Label>
                 <Input
                   type="number"
                   step="0.01"
                   placeholder="e.g. 72.5"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Height (cm)</Label>
+                <Label className="text-xs text-slate-700">Height (cm)</Label>
                 <Input
                   type="number"
                   step="0.1"
                   placeholder="e.g. 175.2"
                   value={height}
                   onChange={(e) => setHeight(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                  className="bg-white border-slate-200 text-xs text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Blood Pressure (BP)</Label>
+                <Label className="text-xs text-slate-700">Blood Pressure (BP)</Label>
                 <Input
                   placeholder="e.g. 120/80"
                   value={bp}
                   onChange={(e) => setBp(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100 font-mono"
+                  className="bg-white border-slate-200 text-xs text-slate-900 font-mono"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-300">Insurance Policy Details</Label>
+              <Label className="text-xs text-slate-700">Insurance Policy Details</Label>
               <Input
                 placeholder="Carrier & Policy Reference (e.g. Star Health POL-88273)"
                 value={insurance}
                 onChange={(e) => setInsurance(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                className="bg-white border-slate-200 text-xs text-slate-900"
               />
             </div>
           </div>
 
           {/* Section: Queue Enqueuing options */}
-          <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg p-4 space-y-3.5">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-650">
                 Live consultation enqueuing
               </Label>
               <div className="flex items-center gap-2">
@@ -681,9 +681,9 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
                   id="autoEnqueue"
                   checked={autoEnqueue}
                   onChange={(e) => setAutoEnqueue(e.target.checked)}
-                  className="rounded border-slate-800 bg-slate-950 text-teal-600 focus:ring-teal-500"
+                  className="rounded border-slate-200 bg-white text-teal-600 focus:ring-teal-500"
                 />
-                <Label htmlFor="autoEnqueue" className="text-xs text-slate-300 select-none cursor-pointer">
+                <Label htmlFor="autoEnqueue" className="text-xs text-slate-700 select-none cursor-pointer">
                   Auto-Enqueue on registration
                 </Label>
               </div>
@@ -691,11 +691,11 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
 
             {autoEnqueue && (
               <div className="space-y-1.5 animate-fadeIn">
-                <Label className="text-xs text-slate-300">Assign to Physician</Label>
+                <Label className="text-xs text-slate-700">Assign to Physician</Label>
                 <select
                   value={selectedDoctorId}
                   onChange={(e) => setSelectedDoctorId(e.target.value)}
-                  className="w-full h-10 bg-slate-900 border border-slate-800 rounded-md px-2.5 text-xs text-slate-100 font-medium"
+                  className="w-full h-10 bg-white border border-slate-200 rounded-md px-2.5 text-xs text-slate-900 font-medium"
                 >
                   {doctorsList.length === 0 ? (
                     <option value="">No Active Doctors Found</option>
@@ -711,19 +711,19 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
             )}
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-800/80 pt-4">
+          <div className="flex justify-end gap-3 border-t border-slate-200/80 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={handleClear}
-              className="h-10 text-xs px-6 border-slate-800 text-slate-300 hover:bg-slate-800/50"
+              className="h-10 text-xs px-6 border-slate-200 text-slate-700 hover:bg-slate-200/50"
             >
               Clear Form
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="h-10 text-xs px-8 bg-teal-600 hover:bg-teal-700 text-white font-bold"
+              className="h-10 text-xs px-8 bg-teal-600 hover:bg-teal-700 text-slate-900 font-bold"
             >
               {loading ? "Registering..." : "Register Patient"}
             </Button>

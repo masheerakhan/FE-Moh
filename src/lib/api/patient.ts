@@ -10,7 +10,10 @@ export interface PatientProfile {
   abha_number?: string;
   abha_address?: string;
   abha_status?: string;
+  preferred_language?: string;
+  aadhaar_number?: string;
 }
+
 
 export interface PatientFamilyLink {
   id?: string;
