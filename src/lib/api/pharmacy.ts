@@ -7,6 +7,7 @@ export interface InventoryItem {
   batch: string;
   expiry: string;
   stock: number;
+  minimum_stock?: number;
   status: "OK" | "Low" | "Critical";
 }
 

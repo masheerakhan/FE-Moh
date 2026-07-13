@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { ArrowUpRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useRBAC } from "@/components/rbac-guard";
+import { axiosInstance } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "MOH Clinics" }, { name: "description", content: "AI-powered Healthcare Operating System command center." }] }),
@@ -19,6 +21,35 @@ function Dashboard() {
   const navigate = useNavigate();
   const { userContext } = useRBAC();
   const role = userContext?.role?.toLowerCase() || "";
+
+  const [activePatientsCount, setActivePatientsCount] = useState<number | null>(null);
+  const [consultationsCount, setConsultationsCount] = useState<number | null>(null);
+  const [totalRevenue, setTotalRevenue] = useState<number | null>(null);
+  const [totalPharmacyUnits, setTotalPharmacyUnits] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const patients = await axiosInstance.get("/patients/").then((r) => r.data).catch(() => []);
+        setActivePatientsCount(patients.length);
+
+        const appts = await axiosInstance.get("/appointments/grid").then((r) => r.data).catch(() => []);
+        setConsultationsCount(appts.length);
+
+        const invoices = await axiosInstance.get("/billing/invoices/").then((r) => r.data).catch(() => []);
+        const rev = invoices.reduce((sum: number, inv: any) => sum + Number(inv.total_amount || 0), 0);
+        setTotalRevenue(rev);
+
+        const inventory = await axiosInstance.get("/pharmacy/inventory/").then((r) => r.data).catch(() => []);
+        const units = inventory.reduce((sum: number, item: any) => sum + Number(item.stock || 0), 0);
+        setTotalPharmacyUnits(units);
+      } catch (err) {
+        console.error("Failed to load dashboard live data", err);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const handleStartConsult = () => {
     toast.success("Consultation Workspace starting", {
@@ -57,18 +88,21 @@ function Dashboard() {
     });
   };
 
-  // Filter KPI summary cards based on role profile permissions:
-  // - "Active Patients" (Patient Experience / Health Score): Hide for Doctor, Receptionist, Clinical Staff, Nurse.
-  // - "Revenue (MTD)" (Infrastructure / Financial Metrics): Only visible for Admin profiles.
-  // - "AI Scribe Hours Saved" (Efficiency Metrics): Hide for Receptionist, Clinical Staff.
-  const filteredKpis = kpis.filter((k) => {
+  const liveKpis = [
+    { label: "Active Patients", value: activePatientsCount !== null ? String(activePatientsCount) : "Loading...", delta: "+15%", tone: "primary" },
+    { label: "Consultations Today", value: consultationsCount !== null ? String(consultationsCount) : "Loading...", delta: "+5%", tone: "info" },
+    { label: "Total Pharmacy Units", value: totalPharmacyUnits !== null ? String(totalPharmacyUnits) : "Loading...", delta: "Live", tone: "success" },
+    { label: "Revenue (MTD)", value: totalRevenue !== null ? `₹${totalRevenue.toLocaleString()}` : "Loading...", delta: "+10%", tone: "warning" },
+  ];
+
+  const filteredKpis = liveKpis.filter((k) => {
     if (k.label === "Active Patients") {
       return !["doctor", "receptionist", "clinical staff", "nurse"].includes(role);
     }
     if (k.label === "Revenue (MTD)") {
       return ["super admin", "superadmin", "organization admin", "clinic admin"].includes(role);
     }
-    if (k.label === "AI Scribe Hours Saved") {
+    if (k.label === "Total Pharmacy Units") {
       return !["receptionist", "clinical staff"].includes(role);
     }
     return true;

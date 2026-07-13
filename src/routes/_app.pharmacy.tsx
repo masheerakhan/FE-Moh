@@ -59,8 +59,28 @@ function Pharmacy() {
       return;
     }
 
+    // Determine minimum_stock based on selected status:
+    // - OK: stock is higher than minimum_stock (e.g. minimum_stock is 50% of stock)
+    // - Low: stock is between 20% and 100% of minimum_stock (e.g. minimum_stock is 1.5x stock)
+    // - Critical: stock is <= 20% of minimum_stock (e.g. minimum_stock is 6x stock)
+    let minimum_stock = 100;
+    if (draft.status === "OK") {
+      minimum_stock = Math.max(0, Math.floor(draft.stock * 0.5));
+    } else if (draft.status === "Low") {
+      minimum_stock = Math.max(10, Math.floor(draft.stock * 1.5));
+    } else if (draft.status === "Critical") {
+      minimum_stock = Math.max(50, Math.floor(draft.stock * 6));
+    }
+
     try {
-      await pharmacyApi.addInventoryItem(draft);
+      await pharmacyApi.addInventoryItem({
+        sku: draft.sku,
+        name: draft.name,
+        batch: draft.batch,
+        expiry: draft.expiry,
+        stock: draft.stock,
+        minimum_stock: minimum_stock
+      } as any);
       toast.success(`${draft.name} added to inventory`);
       setDraft({ sku: "", name: "", batch: "", expiry: "", stock: 0, status: "OK" });
       setOpen(false);
@@ -70,17 +90,23 @@ function Pharmacy() {
     }
   };
 
+
   const removeSKU = async (id: string, name: string) => {
+    console.log("DELETE BUTTON CLICKED");
+    console.log("ID:", id);
+    console.log("NAME:", name);
+
     try {
-      if (id.startsWith("inv")) {
-        // Mock item removal from state
+      if (String(id).startsWith("inv")) {
         setItems((prev) => prev.filter((item) => item.id !== id));
       } else {
         await pharmacyApi.deleteInventoryItem(id);
         refreshInventory();
       }
+
       toast.success(`${name} removed`);
     } catch (err) {
+      console.error(err);
       toast.error("Failed to remove item in backend");
     }
   };
@@ -97,7 +123,7 @@ function Pharmacy() {
 
   const saveStock = async (item: any) => {
     try {
-      if (!item.id.startsWith("inv")) {
+      if (!String(item.id).startsWith("inv")) {
         await pharmacyApi.updateStock(item.id, editStock);
       }
       setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, stock: editStock } : i));
@@ -113,7 +139,7 @@ function Pharmacy() {
     if (!expiry) return false;
     const parts = expiry.match(/(\w+)\s+(\d{4})/);
     if (!parts) return false;
-    const months: Record<string, number> = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const months: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     const exp = new Date(Number(parts[2]), months[parts[1]] ?? 0);
     const diff = (exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30);
     return diff < 3; // Expiring within 3 months
@@ -126,6 +152,7 @@ function Pharmacy() {
         subtitle="Inventory, batches, expiry, purchase orders, Rx mapping, refill reminders."
         actions={
           <>
+            {/* Hidden for now:
             <ActionButton
               label="PO · Auto-suggest"
               title="Auto-suggest purchase order"
@@ -143,6 +170,7 @@ function Pharmacy() {
               }}
               successMessage={(v) => `PO drafted for ${v.vendor} · ${v.horizon} cover`}
             />
+            */}
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
@@ -194,8 +222,9 @@ function Pharmacy() {
                       <Label>Stock</Label>
                       <Input
                         type="number"
-                        value={draft.stock}
-                        onChange={(e) => setDraft({ ...draft, stock: Number(e.target.value) })}
+                        value={draft.stock === 0 ? "" : draft.stock}
+                        onChange={(e) => setDraft({ ...draft, stock: e.target.value === "" ? 0 : Number(e.target.value) })}
+                        placeholder="e.g. 150"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -256,7 +285,7 @@ function Pharmacy() {
             <div className="grid grid-cols-7 px-6 py-2 text-xs text-muted-foreground font-medium">
               <div>SKU</div>
               <div className="col-span-2">Item</div>
-              <div>Batch · Expiry</div>
+              <div>Batch & Expiry</div>
               <div>Stock</div>
               <div>Status</div>
               <div className="text-right">Actions</div>
@@ -265,11 +294,14 @@ function Pharmacy() {
               <div key={i.id} className={`grid grid-cols-7 px-6 py-3 items-center ${i.status === "Critical" ? "bg-destructive/5" : ""}`}>
                 <div className="font-mono text-xs">{i.sku}</div>
                 <div className="col-span-2 font-medium">{i.name}</div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  {i.batch} · {i.expiry}
-                  {isExpiringSoon(i.expiry) && (
-                    <span title="Expiring soon"><AlertTriangle className="size-3 text-warning" /></span>
-                  )}
+                <div className="text-xs text-muted-foreground flex flex-col gap-0.5 justify-center">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[11px] bg-muted/60 px-1 py-0.2 rounded text-foreground">{i.batch}</span>
+                    {isExpiringSoon(i.expiry) && (
+                      <AlertTriangle className="size-3 text-warning shrink-0" />
+                    )}
+                  </div>
+                  <span className="text-[11px] opacity-80">Exp: {i.expiry}</span>
                 </div>
                 <div className="font-mono">
                   {editingId === i.id ? (

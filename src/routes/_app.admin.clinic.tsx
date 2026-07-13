@@ -449,7 +449,7 @@ function ClinicAdminPage() {
                     </div>
                     <div className="text-xs text-muted-foreground mt-1 truncate flex items-center justify-between">
                       <span>{pat.doctor}</span>
-                      <Link to="/emr" className="text-[10px] text-primary hover:underline">View EMR &rarr;</Link>
+                      {/* EMR hidden from frontend: <Link to="/emr" className="text-[10px] text-primary hover:underline">View EMR &rarr;</Link> */}
                     </div>
                     <div className="mt-2">
                       <Badge

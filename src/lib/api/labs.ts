@@ -48,6 +48,8 @@ export const labApi = {
     const formData = new FormData();
     formData.append("file", file);
 
+
+
     const response = await axiosInstance.post<LabReportParseResult>(
       `/labs/orders/${orderId}/parse-pdf/`,
       formData,
@@ -57,6 +59,46 @@ export const labApi = {
         },
       }
     );
+    return response.data;
+  },
+  saveResults: async (id: string, results: string) => {
+    const response = await axiosInstance.post(
+      `/labs/orders/${id}/results/`,
+      {
+        results,
+      }
+    );
+
+    return response.data;
+  },
+  getDashboard: async () => {
+    const response = await axiosInstance.get("/labs/dashboard/");
+    return response.data;
+  },
+  scheduleHomeCollection: async (data: { patient: string; address: string; slot: string }) => {
+    const response = await axiosInstance.post("/labs/home-collections/", {
+      patient_name: data.patient,
+      address: data.address,
+      slot: data.slot,
+    });
+    return response.data;
+  },
+  getHomeCollections: async () => {
+    const response = await axiosInstance.get("/labs/home-collections/");
+    return response.data;
+  },
+  updateHomeCollection: async (id: string, data: { patient?: string; address?: string; slot?: string; status?: string }) => {
+    const payload: any = {};
+    if (data.patient !== undefined) payload.patient_name = data.patient;
+    if (data.address !== undefined) payload.address = data.address;
+    if (data.slot !== undefined) payload.slot = data.slot;
+    if (data.status !== undefined) payload.status = data.status;
+
+    const response = await axiosInstance.patch(`/labs/home-collections/${id}/`, payload);
+    return response.data;
+  },
+  deleteHomeCollection: async (id: string) => {
+    const response = await axiosInstance.delete(`/labs/home-collections/${id}/`);
     return response.data;
   },
 };

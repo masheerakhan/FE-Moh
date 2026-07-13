@@ -18,12 +18,14 @@ import { useRBAC } from "@/components/rbac-guard";
 const navGroups = [
   { group: "Overview", items: [
     { to: "/", label: "Command Center", icon: LayoutDashboard },
-    { to: "/clinics", label: "Multi-clinic", icon: Building2 },
-    { to: "/analytics", label: "Analytics", icon: BarChart3 },
+    // Hidden from frontend:
+    // { to: "/clinics", label: "Multi-clinic", icon: Building2 },
+    // { to: "/analytics", label: "Analytics", icon: BarChart3 },
   ]},
   { group: "Clinical", items: [
     { to: "/doctor", label: "Doctor Workspace", icon: Stethoscope },
-    { to: "/emr", label: "EMR", icon: FileText },
+    // Hidden from frontend:
+    // { to: "/emr", label: "EMR", icon: FileText },
     { to: "/telemedicine", label: "Telemedicine", icon: Video },
     { to: "/lab", label: "Lab", icon: FlaskConical },
     { to: "/pharmacy", label: "Pharmacy", icon: Pill },
@@ -31,19 +33,22 @@ const navGroups = [
   { group: "Front Desk", items: [
     { to: "/appointments", label: "Appointments", icon: Calendar },
     { to: "/patient-onboarding", label: "Patient Onboarding", icon: UserPlus },
-    { to: "/reception", label: "Reception", icon: Users },
+    // Hidden from frontend:
+    // { to: "/reception", label: "Reception", icon: Users },
     { to: "/billing", label: "Billing & Finance", icon: Receipt },
   ]},
   { group: "Patient", items: [
-    { to: "/patient", label: "Patient App", icon: UserRound },
-    { to: "/patient-widget", label: "Patient Snapshot", icon: UserRound },
+    // Hidden from frontend:
+    // { to: "/patient", label: "Patient App", icon: UserRound },
+    // { to: "/patient-widget", label: "Patient Snapshot", icon: UserRound },
   ]},
   { group: "Enterprise", items: [
     { to: "/admin/super", label: "Super Admin", icon: Crown },
     { to: "/admin/org", label: "Organization Admin", icon: Building2 },
     { to: "/admin/clinic", label: "Clinic Admin", icon: LayoutDashboard },
-    { to: "/admin/features", label: "Feature Toggles", icon: Flag },
-    { to: "/whitelabel", label: "White Label", icon: Palette },
+    // Hidden from frontend:
+    // { to: "/admin/features", label: "Feature Toggles", icon: Flag },
+    // { to: "/whitelabel", label: "White Label", icon: Palette },
     { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { to: "/rbac", label: "Advanced RBAC", icon: KeyRound },
   ]},

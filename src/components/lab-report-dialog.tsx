@@ -20,7 +20,15 @@ export function LabReportDialog({
   onClose,
   onSaveSuccess,
 }: LabReportDialogProps) {
-  const [loading, setLoading] = useState(false);
+  const [dashboard, setDashboard] = useState({
+  phlebotomists: 0,
+  average_tat: "",
+  flagged_reports: 0,
+  total_orders: 0,
+  pending: 0,
+  processing: 0,
+  ready: 0,
+});
   const [dateOfReport, setDateOfReport] = useState(new Date().toISOString().slice(0, 10));
 
   // Blood Sugar
