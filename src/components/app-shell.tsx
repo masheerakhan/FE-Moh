@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import mohLogo from "@/assets/moh-logo.png.asset.json";
 import { currentUser as defaultUser } from "@/lib/tenant-context";
 import { useRBAC } from "@/components/rbac-guard";
+
+const mohLogo = "/moh-logo.png";
 
 // Definition of all possible system navigation paths
 const navGroups = [
@@ -123,7 +124,7 @@ const SYSTEM_MOCK_USERS = [
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { permissions, userContext } = useRBAC();
+  const { userContext, hasAccess } = useRBAC();
 
   const [activeUser, setActiveUser] = useState(() => {
     const saved = localStorage.getItem("active_user");
@@ -175,116 +176,40 @@ export function AppShell() {
     }
   };
 
-  const hasPermission = (permCode: string): boolean => {
-    const userPerms = activeUser.permissions || [];
-    return userPerms.includes(permCode);
+  const routePermissions: Record<string, { module: string; screen?: string }> = {
+    "/": { module: "Administration", screen: "management" },
+    "/clinics": { module: "Administration", screen: "management" },
+    "/analytics": { module: "Billing", screen: "management" },
+    "/doctor": { module: "PatientManagement", screen: "patient-family-links" },
+    "/emr": { module: "PatientManagement", screen: "patient-family-links" },
+    "/telemedicine": { module: "PatientManagement", screen: "patient-family-links" },
+    "/lab": { module: "Reception", screen: "management" },
+    "/pharmacy": { module: "Billing", screen: "invoice-hub" },
+    "/appointments": { module: "Reception", screen: "appointments" },
+    "/patient-onboarding": { module: "Reception", screen: "management" },
+    "/reception": { module: "Reception", screen: "management" },
+    "/billing": { module: "Billing", screen: "invoice-hub" },
+    "/patient": { module: "PatientManagement", screen: "patient-family-links" },
+    "/patient-widget": { module: "PatientManagement", screen: "patient-family-links" },
+    "/admin/super": { module: "Administration", screen: "management" },
+    "/admin/org": { module: "Administration", screen: "management" },
+    "/admin/clinic": { module: "Staff", screen: "management" },
+    "/admin/features": { module: "Administration", screen: "management" },
+    "/whitelabel": { module: "Administration", screen: "management" },
+    "/subscriptions": { module: "Administration", screen: "management" },
+    "/rbac": { module: "RBAC", screen: "access-control" },
   };
+
+  const hiddenLabels = ["Analytics", "EMR", "Reception", "Patient App", "Patient Snapshot", "Feature Toggles", "White Label"];
 
   const filteredNav = navGroups.map((group) => {
     const filteredItems = group.items.filter((item) => {
-      const role = (userContext?.role || activeUser.role || "").toLowerCase();
-      const userModules = permissions?.modules?.map((m) => m.toLowerCase()) || [];
-
-      // SUPER ADMIN MASTER BYPASS RULE: Super Admin gets unconditional access to all sidebar items
-      if (role === "super admin" || role === "superadmin") {
-        return true;
+      if (hiddenLabels.includes(item.label)) {
+        return false;
       }
-
-      // 1. Patient Profile constraints
-      if (role === "patient") {
-        return ["/patient", "/patient-widget"].includes(item.to);
-      }
-
-      // 2. Receptionist / Clinical Staff constraints
-      if (["receptionist", "clinical staff"].includes(role)) {
-        return ["/reception", "/appointments", "/billing"].includes(item.to);
-      }
-
-      // 2.5. Clinic Admin constraints
-      if (role === "clinic admin" || role === "clinicadmin") {
-        // EMR / Medical Records bypass check
-        if (item.to === "/emr" && (userModules.includes("emr") || userModules.includes("medical_records") || hasPermission("can_parse_vitals"))) {
-          return true;
-        }
-
-        if (["/patient", "/patient-widget", "/reception", "/appointments", "/billing", "/patient-onboarding"].includes(item.to)) {
-          return false;
-        }
-        return ["/", "/clinics", "/admin/clinic", "/analytics", "/rbac"].includes(item.to);
-      }
-
-      // 3. Command Center (root /) constraints
-      if (item.to === "/") {
-        return ["super admin", "superadmin", "organization admin", "clinic admin", "clinicadmin"].includes(role);
-      }
-
-      // 4. Default permission-based gates
-
-      // Super Admin only routes
-      if (["/admin/super", "/whitelabel", "/subscriptions", "/admin/features"].includes(item.to)) {
-        return userModules.includes("admin") || hasPermission("can_define_rbac_boundaries");
-      }
-      
-      // Org Admin + Super Admin routes
-      if (["/clinics", "/admin/org"].includes(item.to)) {
-        return userModules.includes("admin") || hasPermission("can_define_rbac_boundaries");
-      }
-
-      if (["/analytics"].includes(item.to)) {
-        return userModules.includes("analytics") || hasPermission("can_view_billing_consolidation");
-      }
-
-      if (["/rbac", "/admin/rbac"].includes(item.to)) {
-        return (
-          ["organization admin", "clinic admin", "clinicadmin"].includes(role) ||
-          userModules.includes("rbac") ||
-          hasPermission("can_manage_clinic_rbac")
-        );
-      }
-      
-      // Clinic Admin + Org Admin + Super Admin routes
-      if (["/admin/clinic"].includes(item.to)) {
-        return userModules.includes("admin") || hasPermission("can_manage_clinic_rbac");
-      }
-      
-      // Front Desk / Receptionist routes
-      if (["/reception"].includes(item.to)) {
-        return userModules.includes("reception") || hasPermission("can_manage_patients");
-      }
-
-      if (["/patient-onboarding"].includes(item.to)) {
-        return userModules.includes("reception") || hasPermission("can_manage_patients") || role === "receptionist";
-      }
-
-      if (["/appointments"].includes(item.to)) {
-        return userModules.includes("scheduling") || hasPermission("can_schedule_appointments");
-      }
-
-      if (["/billing"].includes(item.to)) {
-        return userModules.includes("billing") || hasPermission("can_issue_gst_invoices");
-      }
-      
-      // Doctor / Clinical routes
-      if (["/doctor", "/emr", "/telemedicine"].includes(item.to)) {
-        if (["receptionist", "clinical staff"].includes(role)) return false;
-        return userModules.includes("emr") || hasPermission("can_parse_vitals") || role === "doctor";
-      }
-
-      if (["/lab", "/pharmacy"].includes(item.to)) {
-        return userModules.includes("lab") || userModules.includes("pharmacy") || hasPermission("can_paste_unstructured_labs");
-      }
-
-      if (item.to.startsWith("/ai/")) {
-        if (["receptionist", "clinical staff"].includes(role)) return false;
-        return userModules.includes("ai");
-      }
-      
-      // Patient routes
-      if (["/patient", "/patient-widget"].includes(item.to)) {
-        return ["super admin", "superadmin", "organization admin", "clinic admin", "doctor"].includes(role);
-      }
-      
-      return true;
+      const required = routePermissions[item.to];
+      if (!required) return false;
+      return hasAccess({ ...required, action: "view" });
     });
 
     return { ...group, items: filteredItems };
@@ -296,7 +221,7 @@ export function AppShell() {
       <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
         <div className="px-4 py-4 border-b border-sidebar-border">
           <div className="bg-white rounded-lg p-2 flex items-center justify-center">
-            <img src={mohLogo.url} alt="MOH Clinics — Metabolic and Obesity Health" className="h-12 w-auto object-contain" />
+            <img src={mohLogo} alt="MOH Clinics — Metabolic and Obesity Health" className="h-12 w-auto object-contain" />
           </div>
           <div className="mt-2 text-[11px] text-sidebar-foreground/70 text-center tracking-wide">
             Healthcare Operating System

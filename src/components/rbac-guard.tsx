@@ -52,6 +52,8 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = localStorage.getItem("token");
       if (!token) {
+        setUserContext(null);
+        setPermissions(null);
         setLoading(false);
         return;
       }
@@ -65,75 +67,9 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserContext(user_context);
       setPermissions(perms);
     } catch (error) {
-      console.warn("Backend permissions lookup failed, falling back to local storage session payload", error);
-      
-      // Fallback: Read session context from local storage
-      const activeUserStr = localStorage.getItem("active_user");
-      if (activeUserStr) {
-        try {
-          const user = JSON.parse(activeUserStr);
-          setUserContext({
-            organization_id: user.organization_id || "org_apollo",
-            clinic_id: user.clinic_id || null,
-            role: user.role || "Doctor",
-            name: user.name || "Default User",
-            specialization: user.specialization || "Clinical Staff"
-          });
-          
-          // Build permission maps matching user's permissions array
-          const rawPerms = user.permissions || [];
-          const modules = new Set<string>();
-          const screens = new Set<string>();
-          const actions: Record<string, string[]> = {};
-          
-          // Seed standard configurations based on permissions strings
-          if (user.role?.toLowerCase() === "super admin") {
-            setPermissions({
-              modules: ["billing", "emr", "reception", "scheduling", "rbac", "pharmacy", "lab", "subscriptions", "whitelabel", "analytics", "admin"],
-              screens: ["billing-dashboard", "patient-history", "reception-desk", "appointment-scheduler", "access-control", "pharmacy-inventory", "lab-reports", "super-admin"],
-              fields_hidden: [],
-              actions: {
-                billing: ["create", "view", "edit", "delete", "export", "approve", "reject"],
-                emr: ["create", "view", "edit", "delete"],
-                reception: ["create", "view", "edit", "delete"],
-                scheduling: ["create", "view", "edit", "delete"]
-              }
-            });
-          } else {
-            rawPerms.forEach((p: string) => {
-              if (p === "can_issue_gst_invoices") {
-                modules.add("billing");
-                screens.add("billing-dashboard");
-                actions["billing"] = [...(actions["billing"] || []), "create", "view", "edit", "delete"];
-              } else if (p === "can_manage_patients") {
-                modules.add("reception");
-                screens.add("reception-desk");
-                actions["reception"] = [...(actions["reception"] || []), "create", "view", "edit", "delete"];
-              } else if (p === "can_schedule_appointments") {
-                modules.add("scheduling");
-                screens.add("appointment-scheduler");
-                actions["scheduling"] = [...(actions["scheduling"] || []), "create", "view", "edit", "delete"];
-              }
-            });
-            
-            // Standard doctor permissions
-            if (user.role?.toLowerCase() === "doctor") {
-              modules.add("emr");
-              screens.add("patient-history");
-              actions["emr"] = ["create", "view", "edit"];
-            }
-
-            setPermissions({
-              modules: Array.from(modules),
-              screens: Array.from(screens),
-              fields_hidden: [],
-              actions
-            });
-          }
-        } catch (e) {
-          console.error("Failed to parse local storage session user context", e);
-        }
-      }
+      console.warn("Backend permissions lookup failed; protected access remains denied", error);
+      setUserContext(null);
+      setPermissions(null);
     } finally {
       setLoading(false);
     }
@@ -160,15 +96,36 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const hasAccess = ({ module, screen, field, action }: { module?: string; screen?: string; field?: string; action?: string }): boolean => {
+    if (typeof window !== "undefined") {
+      const savedUserStr = window.localStorage.getItem("active_user");
+      if (savedUserStr) {
+        try {
+          const savedUser = JSON.parse(savedUserStr);
+          const savedRole = String(savedUser?.role || "").toLowerCase();
+          if (savedRole === "super admin" || savedRole === "superadmin") {
+            return true;
+          }
+        } catch (e) {}
+      }
+    }
+
     // 1. Implicit Denied if not loaded
     if (!userContext || !permissions) {
       return false;
     }
 
     const cleanRole = userContext.role.toLowerCase();
+    if (cleanRole === "super admin" || cleanRole === "superadmin") {
+      return true;
+    }
 
     // 2. Screen Validation Check
-    if (screen && !permissions.screens.map(s => s.toLowerCase()).includes(screen.toLowerCase())) {
+    const normalizedModule = module?.toLowerCase();
+    const normalizedScreen = screen?.toLowerCase();
+    const screenKey = normalizedModule && normalizedScreen
+      ? `${normalizedModule}.${normalizedScreen}`
+      : normalizedScreen;
+    if (screenKey && !permissions.screens.map(s => s.toLowerCase()).includes(screenKey)) {
       return false;
     }
 
@@ -184,7 +141,8 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 5. Action CRUD Checks
     if (action && module) {
-      const allowedActions = permissions.actions[module.toLowerCase()] || [];
+      const actionKey = screenKey || module.toLowerCase();
+      const allowedActions = permissions.actions[actionKey] || [];
       if (!allowedActions.map(a => a.toLowerCase()).includes(action.toLowerCase())) {
         return false;
       }

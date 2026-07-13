@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/action-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { axiosInstance } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/admin/clinic")({
   head: () => ({ meta: [{ title: "Clinic Admin — MOH CLINICS" }] }),
@@ -149,34 +150,48 @@ function ClinicAdminPage() {
   };
 
   const [stats, setStats] = useState([
-    { label: "Appointments today", value: "318" },
-    { label: "Walk-ins", value: "74" },
-    { label: "Low-stock SKUs", value: "3" },
+    { label: "Appointments today", value: "0" },
+    { label: "Clinic staff", value: "0" },
+    { label: "Queue entries", value: "0" },
   ]);
 
-  const [queue, setQueue] = useState<QueuePatient[]>(defaultQueue);
-  const [roster, setRoster] = useState<StaffRoster[]>(defaultRoster);
-  const [inventory, setInventory] = useState<InventoryItem[]>(defaultInventory);
-  const [revenue, setRevenue] = useState<RevenueState>(defaultRevenue);
-  const [incidents, setIncidents] = useState<ClinicIncident[]>(defaultIncidents);
-  const [approvals, setApprovals] = useState<ClinicApproval[]>(defaultApprovals);
+  const [queue, setQueue] = useState<QueuePatient[]>([]);
+  const [roster, setRoster] = useState<StaffRoster[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [revenue, setRevenue] = useState<RevenueState>({ todayTotal: 0, upi: 0, card: 0, cash: 0, consultations: 0, pharmacy: 0, diagnostics: 0 });
+  const [incidents, setIncidents] = useState<ClinicIncident[]>([]);
+  const [approvals, setApprovals] = useState<ClinicApproval[]>([]);
 
-  const loadData = () => {
-    const savedQueue = localStorage.getItem("mock_clinic_queue");
-    const savedRoster = localStorage.getItem("mock_clinic_roster");
-    const savedInventory = localStorage.getItem("mock_clinic_inventory");
-    const savedStats = localStorage.getItem("mock_clinic_stats");
-    const savedRevenue = localStorage.getItem("mock_clinic_revenue");
-    const savedIncidents = localStorage.getItem("mock_clinic_incidents");
-    const savedApprovals = localStorage.getItem("mock_clinic_approvals");
-
-    if (savedQueue) setQueue(JSON.parse(savedQueue));
-    if (savedRoster) setRoster(JSON.parse(savedRoster));
-    if (savedInventory) setInventory(JSON.parse(savedInventory));
-    if (savedStats) setStats(JSON.parse(savedStats));
-    if (savedRevenue) setRevenue(JSON.parse(savedRevenue));
-    if (savedIncidents) setIncidents(JSON.parse(savedIncidents));
-    if (savedApprovals) setApprovals(JSON.parse(savedApprovals));
+  const loadData = async () => {
+    try {
+      const [employeesResponse, queueResponse, appointmentsResponse] = await Promise.all([
+        axiosInstance.get("/employees/"),
+        axiosInstance.get("/scheduling/queue/"),
+        axiosInstance.get("/appointments/grid"),
+      ]);
+      const employees = employeesResponse.data || [];
+      const queueRows = queueResponse.data || [];
+      const appointments = appointmentsResponse.data?.appointments || appointmentsResponse.data || [];
+      setRoster(employees.map((employee: any) => ({
+        name: employee.user_name || employee.employee_code,
+        role: employee.designation,
+        shift: "—",
+        status: employee.is_active_employee ? "ACTIVE" : "ON_LEAVE",
+      })));
+      setQueue(queueRows.map((row: any) => ({
+        token: row.token_number || row.token || String(row.id),
+        name: row.patient_name || row.patient || "Patient",
+        doctor: row.doctor_name || row.doctor || "—",
+        status: row.status,
+      })));
+      setStats([
+        { label: "Appointments today", value: String(appointments.length) },
+        { label: "Clinic staff", value: String(employees.length) },
+        { label: "Queue entries", value: String(queueRows.length) },
+      ]);
+    } catch (error: any) {
+      toast.error("Unable to load clinic dashboard data", { description: error.response?.data?.detail || error.message });
+    }
   };
 
   useEffect(() => {

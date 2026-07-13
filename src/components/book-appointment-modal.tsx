@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { X, Search, Clock, User, Layers, Info, Calendar } from "lucide-react";
 import { axiosInstance, patientApi } from "@/lib/api";
+import { currentUser } from "@/lib/tenant-context";
 
 const secureApi = axiosInstance;
 
@@ -48,20 +49,44 @@ export function BookAppointmentModal({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [isLoadingDoctors, setIsLoadingDoctors] = useState<boolean>(true);
-  const [selectedDept, setSelectedDept] = useState<string>('General Medicine'); // Tracks selected department button
+  const [selectedDepartment, setSelectedDepartment] = useState(initialDepartment || "General Medicine");
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
   const activeDoctorId = selectedDoctorId;
   const setActiveDoctorId = setSelectedDoctorId;
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
-  // Real-time effect to fetch all active doctors on component mount
   useEffect(() => {
     const fetchDoctors = async () => {
+      const savedUserStr = localStorage.getItem("active_user");
+      let organizationId = currentUser.organization_id || "";
+      let clinicId = currentUser.clinic_id || "";
+
+      if (savedUserStr) {
+        try {
+          const parsed = JSON.parse(savedUserStr);
+          organizationId = parsed.organization_id || organizationId;
+          clinicId = parsed.clinic_id || clinicId;
+        } catch (e) {}
+      }
+
+      if (!selectedDepartment) {
+        setDoctorsList([]);
+        setIsLoadingDoctors(false);
+        return;
+      }
+
       try {
         setIsLoadingDoctors(true);
-        const response = await secureApi.get(`/doctors/`);
-        const fetchedDocs = Array.isArray(response.data) ? response.data : response.data?.results || [];
-        setDoctorsList(fetchedDocs);
+        const response = await secureApi.get(`/appointments/available-doctors/`, {
+          params: {
+            organization_id: organizationId,
+            clinic_id: clinicId,
+            department: selectedDepartment
+          }
+        });
+
+        const fetchedDocs = response.data.doctors || response.data || [];
+        setDoctorsList(Array.isArray(fetchedDocs) ? fetchedDocs : []);
       } catch (err: any) {
         console.error("Doctor fetch error:", err.response?.data || err);
         setDoctorsList([]);
@@ -69,8 +94,11 @@ export function BookAppointmentModal({
         setIsLoadingDoctors(false);
       }
     };
-    fetchDoctors();
-  }, []);
+
+    if (isOpen) {
+      fetchDoctors();
+    }
+  }, [selectedDepartment, isOpen]);
 
   // Real-time effect for debounced patient search autocomplete query
   useEffect(() => {
@@ -101,7 +129,6 @@ export function BookAppointmentModal({
     return () => clearTimeout(debounceTimer);
   }, [patientQuery]);
 
-  const [selectedDepartment, setSelectedDepartment] = useState(initialDepartment);
   const [startTime, setStartTime] = useState(initialTime);
   const [endTime, setEndTime] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -113,7 +140,7 @@ export function BookAppointmentModal({
   // Sync initial department and times on load
   useEffect(() => {
     if (isOpen) {
-      setSelectedDepartment(initialDepartment);
+      setSelectedDepartment(initialDepartment || "General Medicine");
       setStartTime(initialTime);
       
       // Calculate 30-min block end-time automatically
@@ -185,12 +212,12 @@ export function BookAppointmentModal({
 
   // Auto-select doctor if list updates
   useEffect(() => {
-    if (doctorsList.length > 0) {
-      setSelectedDoctorId(doctorsList[0].id);
+    if (filteredDoctorsList.length > 0) {
+      setSelectedDoctorId(filteredDoctorsList[0].id);
     } else {
       setSelectedDoctorId("");
     }
-  }, [doctorsList]);
+  }, [filteredDoctorsList]);
 
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -396,14 +423,20 @@ export function BookAppointmentModal({
             >
               {isLoadingDoctors ? (
                 <option value="" disabled>Loading Doctors...</option>
+              ) : filteredDoctorsList.length === 0 ? (
+                <option value="" disabled>No doctors available in this clinic facility</option>
               ) : (
                 <>
                   <option value="" disabled>Select a Doctor</option>
-                  {doctorsList.map((doc: any) => (
-                    <option key={doc.id} value={doc.id}>
-                      Dr. {doc.name || `${doc.first_name || ""} ${doc.last_name || ""}`.trim() || "Physician"} ({doc.specialization || doc.specialty || "General Physician"})
-                    </option>
-                  ))}
+                  {filteredDoctorsList.map((doc: any) => {
+                    const doctorName = doc.doctor_name || doc.name || doc.full_name || [doc.first_name, doc.last_name].filter(Boolean).join(" ") || "Doctor";
+                    const specialty = doc.specialty || doc.specialization || doc.department_name || doc.department || "General Physician";
+                    return (
+                      <option key={doc.id} value={doc.id}>
+                        {doctorName} ({specialty})
+                      </option>
+                    );
+                  })}
                 </>
               )}
             </select>

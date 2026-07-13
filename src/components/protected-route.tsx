@@ -123,7 +123,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
   const pathname = routerState.location.pathname;
   
-  const { permissions, userContext } = useRBAC();
+  const { userContext, hasAccess, loading } = useRBAC();
 
   const [user, setUser] = useState<any>(defaultUser);
   const [isClient, setIsClient] = useState(false);
@@ -151,14 +151,34 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return () => window.removeEventListener("storage_user_change", handleStorageChange);
   }, []);
 
-  const activeRole = userContext?.role || user.role;
-  const activePerms = user.permissions || [];
-  const activeModules = permissions?.modules || [];
-  const isAuthorized = checkPathWithRBAC(activeRole, activePerms, activeModules, pathname);
+  const routePermissions: Array<[string, { module: string; screen?: string }]> = [
+    ["/admin/super", { module: "Administration", screen: "management" }],
+    ["/admin/org", { module: "Administration", screen: "management" }],
+    ["/admin/clinic", { module: "Staff", screen: "management" }],
+    ["/admin/features", { module: "Administration", screen: "management" }],
+    ["/clinics", { module: "Administration", screen: "management" }],
+    ["/analytics", { module: "Billing", screen: "management" }],
+    ["/rbac", { module: "RBAC", screen: "access-control" }],
+    ["/appointments", { module: "Reception", screen: "appointments" }],
+    ["/patient-onboarding", { module: "Reception", screen: "management" }],
+    ["/reception", { module: "Reception", screen: "management" }],
+    ["/billing", { module: "Billing", screen: "invoice-hub" }],
+    ["/doctor", { module: "PatientManagement", screen: "patient-family-links" }],
+    ["/emr", { module: "PatientManagement", screen: "patient-family-links" }],
+    ["/telemedicine", { module: "PatientManagement", screen: "patient-family-links" }],
+    ["/lab", { module: "Reception", screen: "management" }],
+    ["/pharmacy", { module: "Billing", screen: "invoice-hub" }],
+    ["/patient", { module: "PatientManagement", screen: "patient-family-links" }],
+    ["/whitelabel", { module: "Administration", screen: "management" }],
+    ["/subscriptions", { module: "Administration", screen: "management" }],
+    ["/", { module: "Administration", screen: "management" }],
+  ];
+  const required = routePermissions.find(([prefix]) => prefix === "/" ? pathname === "/" : pathname.startsWith(prefix))?.[1];
+  const isAuthorized = Boolean(required && hasAccess({ ...required, action: "view" }));
 
   useEffect(() => {
     // Don't run auth checks until localStorage has been read on the client
-    if (!isClient) return;
+    if (!isClient || loading) return;
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -187,9 +207,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         navigate({ to: "/" });
       }
     }
-  }, [pathname, user, navigate, isAuthorized, isClient]);
+  }, [pathname, user, navigate, isAuthorized, isClient, loading]);
 
-  if (!isClient) {
+  if (!isClient || loading) {
     return null;
   }
 

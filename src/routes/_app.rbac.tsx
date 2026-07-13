@@ -13,9 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCollection } from "@/lib/use-collection";
 import { organizations, clinics, currentUser } from "@/lib/tenant-context";
-import { axiosInstance } from "@/lib/api";
+import { rbacApi } from "@/lib/api/rbac";
 
 export const Route = createFileRoute("/_app/rbac")({
   head: () => ({ meta: [{ title: "Advanced RBAC — MOH CLINICS" }] }),
@@ -169,11 +168,52 @@ const SEED_ROLES: Role[] = [
 ];
 
 export function RbacPage() {
-  const { items: roles, create, update, remove } = useCollection<Role>("rbac_roles", SEED_ROLES);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const create = (role: Role) => { setRoles((items) => [...items, role]); return role; };
+  const update = (id: string, changes: Partial<Role>) => setRoles((items) => items.map((item) => item.id === id ? { ...item, ...changes } : item));
+  const remove = (id: string) => setRoles((items) => items.filter((item) => item.id !== id));
   const [selectedId, setSelectedId] = useState<string>(roles[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
+  const [catalogScreens, setCatalogScreens] = useState<typeof SCREENS>([]);
+  const [catalogActions, setCatalogActions] = useState<Action[]>([]);
+  const [screenActions, setScreenActions] = useState<Record<string, Action[]>>({});
+
+  const normalizeMatrix = (matrix: Record<string, Action[]> = {}) =>
+    Object.fromEntries(Object.entries(matrix).map(([key, actions]) => [key.toLowerCase(), actions]));
+
+  const toRole = (role: any): Role => ({
+    id: role.id, name: role.name, description: role.description ?? "", scope: role.scope,
+    organization_id: role.organization ?? undefined, clinic_id: role.clinic ?? undefined,
+    system: role.organization === null, permissions: normalizeMatrix(role.permission_matrix),
+    created_at: role.created_at, updated_at: role.updated_at, updated_by: "server",
+  });
+
+  useEffect(() => {
+    Promise.all([rbacApi.listRoles(), rbacApi.catalog()]).then(([items, catalog]) => {
+      const loaded = items.map(toRole);
+      const screens = new Map<string, (typeof SCREENS)[number]>();
+      const actions = new Set<Action>();
+      const available: Record<string, Action[]> = {};
+      catalog.filter((permission) => permission.is_active && permission.screen).forEach((permission) => {
+        const module = permission.module.toLowerCase();
+        const screen = permission.screen!;
+        const key = `${module}.${screen.toLowerCase()}`;
+        screens.set(key, { module: permission.module, screen, key });
+        const action = (permission.action.toLowerCase() === "read" ? "view" : permission.action.toLowerCase()) as Action;
+        if (ACTIONS.includes(action)) {
+          actions.add(action);
+          available[key] = Array.from(new Set([...(available[key] || []), action]));
+        }
+      });
+      setRoles(loaded);
+      setCatalogScreens(Array.from(screens.values()));
+      setCatalogActions(Array.from(actions));
+      setScreenActions(available);
+      setSelectedId((id) => id || loaded[0]?.id || "");
+    }).catch((error) => toast.error("Unable to load roles", { description: error.response?.data?.detail || error.message }));
+  }, []);
 
   const [activeUser, setActiveUser] = useState(() => {
     const saved = localStorage.getItem("active_user");
@@ -203,28 +243,6 @@ export function RbacPage() {
   }, [activeUser, navigate]);
 
   const isSuperAdmin = activeUser.role?.toUpperCase() === "SUPER ADMIN" || activeUser.role?.toUpperCase() === "SUPERADMIN";
-
-  // Auto-restore core system roles if deleted or missing from the loaded list
-  useEffect(() => {
-    if (roles.length > 0) {
-      const hasReceptionist = roles.some((r) => r.id === "role_receptionist");
-      if (!hasReceptionist) {
-        const receptionistRole = SEED_ROLES.find((r) => r.id === "role_receptionist");
-        if (receptionistRole) {
-          create(receptionistRole);
-        }
-      }
-
-      const hasClinicAdmin = roles.some((r) => r.id === "role_clinic_admin");
-      if (!hasClinicAdmin) {
-        const clinicAdminRole = SEED_ROLES.find((r) => r.id === "role_clinic_admin");
-        if (clinicAdminRole) {
-          create(clinicAdminRole);
-          toast.success("Restored system Clinic Admin role successfully.");
-        }
-      }
-    }
-  }, [roles, create]);
 
   const isOrgAdmin = activeUser.role?.toLowerCase() === "organization admin" || activeUser.role?.toLowerCase() === "org admin";
   const isClinicAdmin = activeUser.role?.toLowerCase() === "clinic admin" || activeUser.role?.toLowerCase() === "clinicadmin";
@@ -300,18 +318,8 @@ export function RbacPage() {
     update(selected.id, { permissions: nextPerms, updated_at: new Date().toISOString(), updated_by: currentUser.name });
 
     try {
-      // Sync directly with backend database storage layer
-      const token = localStorage.getItem("token");
-      await axiosInstance.put("/auth/rbac/update", {
-        role_id: selected.id,
-        role_name: selected.name,
-        permissions: nextPerms
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
+      const saved = await rbacApi.updateRole(selected.id, { permissions: nextPerms });
+      update(selected.id, toRole(saved));
       
       // Invalidate local storage cache and force instant RBAC refresh across views
       window.dispatchEvent(new Event("storage_user_change"));
@@ -369,33 +377,23 @@ export function RbacPage() {
     }
 
     try {
-      const token = localStorage.getItem("token");
       if (isEdit) {
-        update(role.id, { ...role, updated_at: new Date().toISOString(), updated_by: currentUser.name });
-        await axiosInstance.put("/auth/rbac/update", {
-          role_id: role.id,
-          role_name: role.name,
+        await rbacApi.updateRole(role.id, {
+          name: role.name,
+          description: role.description,
           permissions: role.permissions
-        }, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
         });
+        const saved = await rbacApi.getRole(role.id);
+        update(role.id, toRole(saved));
         toast.success(`Role "${role.name}" updated`);
       } else {
-        const created = create(role);
+        const created = toRole(await rbacApi.createRole({
+          name: role.name,
+          description: role.description,
+          permissions: role.permissions,
+        }));
+        create(created);
         setSelectedId(created.id);
-        await axiosInstance.put("/auth/rbac/update", {
-          role_id: created.id,
-          role_name: created.name,
-          permissions: created.permissions
-        }, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
         toast.success(`Role "${role.name}" created`);
       }
       
@@ -412,7 +410,7 @@ export function RbacPage() {
     }
   };
 
-  const handleDelete = (role: Role) => {
+  const handleDelete = async (role: Role) => {
     const rIdLower = role.id.toLowerCase();
     const nameLower = role.name.toLowerCase();
 
@@ -443,9 +441,14 @@ export function RbacPage() {
         return;
       }
     }
-    remove(role.id);
-    toast.success(`${role.system ? "System role" : "Role"} "${role.name}" deleted`);
-    if (selectedId === role.id) setSelectedId(filtered[0]?.id ?? "");
+    try {
+      await rbacApi.deleteRole(role.id);
+      remove(role.id);
+      toast.success(`Role "${role.name}" deleted`);
+      if (selectedId === role.id) setSelectedId(filtered.find((r) => r.id !== role.id)?.id ?? "");
+    } catch (error: any) {
+      toast.error("Delete failed", { description: error.response?.data?.detail || error.message });
+    }
   };
 
   const cloneRole = (role: Role) => {
@@ -464,13 +467,13 @@ export function RbacPage() {
 
   const grouped = useMemo(() => {
     const map = new Map<string, typeof SCREENS>();
-    SCREENS.forEach((s) => {
+    catalogScreens.forEach((s) => {
       const list = map.get(s.module) ?? [];
       list.push(s);
       map.set(s.module, list);
     });
     return Array.from(map.entries());
-  }, []);
+  }, [catalogScreens]);
 
   // --------------------------------------------------------------------------
   // Custom permissions — user-defined rows added directly to the live matrix
@@ -561,7 +564,7 @@ export function RbacPage() {
               <DialogTrigger asChild>
                 <Button size="sm" onClick={() => setEditing(null)}><Plus className="size-4 mr-1" /> New role</Button>
               </DialogTrigger>
-              <RoleDialog initial={editing} onSave={handleSave} onCancel={() => { setDialogOpen(false); setEditing(null); }} />
+              <RoleDialog screens={catalogScreens} actions={catalogActions} screenActions={screenActions} initial={editing} onSave={handleSave} onCancel={() => { setDialogOpen(false); setEditing(null); }} />
             </Dialog>
           </div>
         } />
@@ -765,7 +768,7 @@ export function RbacPage() {
   );
 }
 
-function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSave: (r: Role) => void; onCancel: () => void }) {
+function RoleDialog({ screens, actions, screenActions, initial, onSave, onCancel }: { screens: typeof SCREENS; actions: Action[]; screenActions: Record<string, Action[]>; initial: Role | null; onSave: (r: Role) => void; onCancel: () => void }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [scope, setScope] = useState<RoleScope>(initial?.scope ?? "clinic");
@@ -795,7 +798,7 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
       toast.error("Module and Screen name are required");
       return;
     }
-    if (SCREENS.some((s) => s.key === key) || customDialogScreens.some((s) => s.key === key)) {
+    if (screens.some((s) => s.key === key) || customDialogScreens.some((s) => s.key === key)) {
       toast.error(`Permission key "${key}" already exists`);
       return;
     }
@@ -814,10 +817,20 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
   };
 
   const toggleLocalPermission = (screenKey: string, action: Action) => {
-    const current = permissions[screenKey] ?? [];
-    const next = current.includes(action) ? current.filter((a) => a !== action) : [...current, action];
-    setPermissions({ ...permissions, [screenKey]: next });
+    setPermissions((currentMatrix) => {
+      const current = currentMatrix[screenKey] ?? [];
+      const next = current.includes(action) ? current.filter((a) => a !== action) : [...current, action];
+      return { ...currentMatrix, [screenKey]: next };
+    });
   };
+
+  const grantAllPermissions = () => {
+    setPermissions(Object.fromEntries(
+      screens.map((screen) => [screen.key, [...(screenActions[screen.key] || [])]])
+    ));
+  };
+
+  const clearAllPermissions = () => setPermissions({});
 
   const submit = () => {
     if (!name.trim()) { toast.error("Name is required"); return; }
@@ -878,24 +891,29 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
         </TabsContent>
 
         <TabsContent value="perms" className="mt-4 space-y-4">
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={clearAllPermissions}>Clear all</Button>
+            <Button type="button" size="sm" onClick={grantAllPermissions}>Grant all</Button>
+          </div>
           <div className="rounded-md border max-h-[380px] overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="text-xs sticky top-0 z-10">
                 <tr className="border-b">
                   <th className="text-left px-3 py-2 font-medium bg-card">Module / Screen</th>
-                  {ACTIONS.map((a) => <th key={a} className="px-2 py-2 capitalize font-medium bg-card">{a}</th>)}
+                  {actions.map((a) => <th key={a} className="px-2 py-2 capitalize font-medium bg-card">{a}</th>)}
                   <th className="w-8 bg-card" />
                 </tr>
               </thead>
               <tbody>
                 {/* Built-in screens */}
-                {SCREENS.map((s) => (
+                {screens.map((s) => (
                   <tr key={s.key} className="border-t">
                     <td className="px-3 py-2">
                       <div className="font-medium text-xs">{s.screen}</div>
                       <div className="text-[10px] text-muted-foreground">{s.module} · {s.key}</div>
                     </td>
-                    {ACTIONS.map((a) => {
+                    {actions.map((a) => {
+                      if (!(screenActions[s.key] || []).includes(a)) return <td key={a} />;
                       const checked = (permissions[s.key] ?? []).includes(a);
                       return (
                         <td key={a} className="px-2 py-2 text-center">
@@ -916,7 +934,7 @@ function RoleDialog({ initial, onSave, onCancel }: { initial: Role | null; onSav
                       </div>
                       <div className="text-[10px] text-muted-foreground">{s.module} · {s.key}</div>
                     </td>
-                    {ACTIONS.map((a) => {
+                    {actions.map((a) => {
                       const checked = (permissions[s.key] ?? []).includes(a);
                       return (
                         <td key={a} className="px-2 py-2 text-center">

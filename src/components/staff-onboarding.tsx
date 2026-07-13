@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, ShieldAlert, UserPlus, Users, ToggleLeft, ToggleRight, Building } from "lucide-react";
 import { axiosInstance } from "@/lib/api";
+import { organizationApi, clinicApi, departmentApi } from "@/lib/api";
 import { currentUser as defaultUser } from "@/lib/tenant-context";
 
 export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSelect?: boolean }) {
@@ -36,8 +37,11 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
   const [filteredDepartments, setFilteredDepartments] = useState<any[]>([]);
   const [clinicsList, setClinicsList] = useState<any[]>([]);
+  const [organizationsList, setOrganizationsList] = useState<any[]>([]);
+  const [rolesList, setRolesList] = useState<any[]>([]);
 
   // Form Fields
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState(activeUser.organization_id || "");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("defaultPassword123!");
@@ -49,52 +53,79 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const [staffRes, clinicRes, deptRes] = await Promise.all([
-        axiosInstance.get("/employees/").catch(() => ({ data: [] })),
-        axiosInstance.get("/clinics/").catch(() => ({ data: [] })),
-        axiosInstance.get("/departments/").catch(() => ({ data: [] }))
+      const [staffRes, orgRes, clinicRes, deptRes, roleRes] = await Promise.all([
+        axiosInstance.get("/employees/"),
+        organizationApi.getAll(),
+        clinicApi.getClinics(),
+        departmentApi.getDepartments(),
+        axiosInstance.get("/rbac/roles/"),
       ]);
 
-      setStaffList(staffRes.data || []);
-      setClinicsList(clinicRes.data || []);
-      setAllDepartments(deptRes.data || []);
+      const organizationRows = orgRes || [];
+      const clinicRows = clinicRes || [];
+      const departmentRows = deptRes || [];
+      const roleRows = Array.isArray(roleRes?.data) ? roleRes.data : roleRes?.data?.results || [];
+      const filteredClinics = clinicRows.filter((c: any) => {
+        const orgValue = c.organization_id || c.organization || "";
+        return !selectedOrganizationId || !orgValue || String(orgValue) === String(selectedOrganizationId);
+      });
 
-      // Default Clinic ID resolution with normalization mapping
+      setOrganizationsList(organizationRows);
+      setStaffList(staffRes.data || []);
+      setClinicsList(filteredClinics);
+      setAllDepartments(departmentRows);
+      setRolesList(roleRows);
+
       let userClinic = activeUser.clinic_id;
-      if (userClinic && clinicRes.data && clinicRes.data.length > 0) {
-        const matchedClinic = clinicRes.data.find(
+      if (userClinic && filteredClinics.length > 0) {
+        const matchedClinic = filteredClinics.find(
           (c: any) => String(c.id) === String(userClinic) || String(c.code) === String(userClinic)
         );
         if (matchedClinic) {
           userClinic = matchedClinic.id;
         }
-      } else if (clinicRes.data && clinicRes.data.length > 0) {
-        userClinic = clinicRes.data[0].id;
+      } else if (filteredClinics.length > 0) {
+        userClinic = filteredClinics[0].id;
       }
       setSelectedClinicId(userClinic || "");
-    } catch (err) {
-      console.warn("Failed to load setup data from backend, generating mock sandbox records");
-      setClinicsList([{ id: "clinic_bandra", name: "Apollo Bandra Clinic", code: "clinic_bandra" }]);
-      setAllDepartments([
-        { id: "dept_gen", name: "General Medicine", clinic_id: "clinic_bandra" },
-        { id: "dept_cardio", name: "Cardiology", clinic_id: "clinic_bandra" },
-        { id: "dept_peds", name: "Pediatrics", clinic_id: "clinic_bandra" },
-        { id: "dept_endo", name: "Endocrinology", clinic_id: "clinic_bandra" },
-        { id: "dept_front", name: "Front Office", clinic_id: "clinic_bandra" }
-      ]);
-      setStaffList([
-        { id: "e1", employee_code: "EMP_DOC_amit", user_name: "Dr. Amit Sharma", user_email: "amit.sharma@helix.health", designation: "Doctor", is_doctor: true, is_active_employee: true, department_name: "General Medicine", clinic_name: "Apollo Bandra Clinic" },
-        { id: "e2", employee_code: "EMP_REC_anita", user_name: "Nurse Anita Sen", user_email: "anita.sen@helix.health", designation: "Receptionist", is_doctor: false, is_active_employee: true, department_name: "Front Office", clinic_name: "Apollo Bandra Clinic" }
-      ]);
-      setSelectedClinicId("clinic_bandra");
+    } catch (err: any) {
+      setClinicsList([]);
+      setAllDepartments([]);
+      setStaffList([]);
+      setSelectedClinicId("");
+      toast.error("Unable to load clinic staff from the database", {
+        description: err.response?.data?.detail || err.message,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadInitialData();
+    setSelectedOrganizationId(activeUser.organization_id || "");
   }, [activeUser]);
+
+  useEffect(() => {
+    if (!organizationsList.length) return;
+
+    const matchingOrg = organizationsList.find((org: any) => {
+      const candidateIds = [org.id, org.uuid, org.organization_id].filter(Boolean);
+      return candidateIds.some((value: string) => String(value) === String(selectedOrganizationId || activeUser.organization_id || ""));
+    });
+
+    const nextOrgId = matchingOrg
+      ? matchingOrg.id || matchingOrg.uuid || matchingOrg.organization_id
+      : organizationsList[0]?.id || organizationsList[0]?.uuid || organizationsList[0]?.organization_id || "";
+
+    setSelectedOrganizationId((prev: string) => (prev && organizationsList.some((org: any) => {
+      const candidateIds = [org.id, org.uuid, org.organization_id].filter(Boolean);
+      return candidateIds.some((value: string) => String(value) === String(prev));
+    })) ? prev : nextOrgId);
+  }, [organizationsList, activeUser.organization_id, selectedOrganizationId]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [activeUser, selectedOrganizationId]);
 
   // Filter departments whenever the target clinic changes
   useEffect(() => {
@@ -147,11 +178,21 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
       });
 
       const userId = userRes.data.id;
+      const effectiveOrganizationId = selectedOrganizationId || activeUser.organization_id || organizationsList[0]?.id || organizationsList[0]?.uuid || organizationsList[0]?.organization_id || null;
+      const normalizedRole = String(role || "").trim().toLowerCase();
+      const resolvedRole = rolesList.find((candidate: any) => {
+        const roleName = String(candidate?.name || "").trim().toLowerCase();
+        return roleName === normalizedRole || roleName.includes(normalizedRole);
+      });
+      const resolvedRoleId = resolvedRole?.id || null;
 
-      // Action 2: Create Employee record linked to user & selected clinic
+      // Action 2: Create Employee record linked to user, organization and selected clinic
       await axiosInstance.post("/employees/", {
         user: userId,
+        organization: effectiveOrganizationId,
+        organization_id: effectiveOrganizationId,
         clinic: selectedClinicId,
+        clinic_id: selectedClinicId,
         department: departmentId || null,
         designation: role,
         joining_date: new Date().toISOString().slice(0, 10),
@@ -162,9 +203,12 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
       });
 
       // Action 3: Assign Role
+      if (!resolvedRoleId) {
+        throw new Error(`No matching backend role was found for "${role}".`);
+      }
       await axiosInstance.post("/rbac/user-roles/", {
         user: userId,
-        role_code: role === "Doctor" ? "role_doctor" : "role_receptionist"
+        role: resolvedRoleId
       });
 
       toast.success(`Staff Profile "${fullName}" onboarded successfully.`);
@@ -174,44 +218,9 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
       setEmployeeCode("");
       loadInitialData();
     } catch (err: any) {
-      console.warn("Backend staff creation failed, fallback simulation active", err);
-
-      const maxDocs = 10;
-      const maxReceps = 10;
-
-      if (role === "Doctor" && staffList.filter(s => s.is_doctor && s.is_active_employee).length >= maxDocs) {
-        toast.error("Clinic Boundary Exceeded", {
-          description: `Failed to onboard. Maximum permissible active Doctor profiles is limited to ${maxDocs} for this clinic context.`
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (role === "Receptionist" && staffList.filter(s => s.designation === "Receptionist" && s.is_active_employee).length >= maxReceps) {
-        toast.error("Clinic Boundary Exceeded", {
-          description: `Failed to onboard. Maximum permissible active Receptionist profiles is limited to ${maxReceps} for this clinic context.`
-        });
-        setLoading(false);
-        return;
-      }
-
-      const mockEmployee = {
-        id: `emp_mock_${Date.now()}`,
-        employee_code: employeeCode,
-        user_name: fullName,
-        user_email: email,
-        designation: role,
-        is_doctor: role === "Doctor",
-        is_active_employee: true,
-        department_name: filteredDepartments.find(d => String(d.id) === String(departmentId))?.name || "Front Office",
-        clinic_name: clinicsList.find(c => String(c.id) === String(selectedClinicId))?.name || "Bandra Clinic"
-      };
-
-      setStaffList((prev) => [...prev, mockEmployee]);
-      toast.success(`Simulated staff onboarding success (Mock Sandbox fallback).`);
-      setFullName("");
-      setEmail("");
-      setEmployeeCode("");
+      toast.error("Staff creation failed", {
+        description: err.response?.data?.detail || err.response?.data?.message || err.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -229,11 +238,10 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
       });
       toast.success(`Updated ${emp.user_name || emp.employee_code} status.`);
       loadInitialData();
-    } catch (err) {
-      setStaffList((prev) =>
-        prev.map((s) => (s.id === emp.id ? { ...s, is_active_employee: nextStatus } : s))
-      );
-      toast.success(`Updated ${emp.user_name || emp.employee_code} status to ${nextStatus ? "Active" : "Inactive"} (Mock Sandbox fallback).`);
+    } catch (err: any) {
+      toast.error("Staff status update failed", {
+        description: err.response?.data?.detail || err.message,
+      });
     }
   };
 
@@ -287,6 +295,19 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
                 placeholder="e.g. EMP_DOC_POOJA"
                 className="h-9 text-xs font-mono"
               />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Organization</Label>
+              <select
+                value={selectedOrganizationId}
+                onChange={(e) => setSelectedOrganizationId(e.target.value)}
+                className="w-full h-9 border rounded-md px-2 text-xs bg-card font-medium"
+              >
+                {organizationsList.map((org: any) => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Clinic Dropdown - displayed if logged in user manages multiple clinics */}
@@ -360,20 +381,22 @@ export function StaffOnboarding({ forceClinicSelect = false }: { forceClinicSele
         <CardContent className="p-0">
           {hasPermission("can_view_staff_directory") ? (
             <div className="divide-y text-xs">
-              <div className="grid grid-cols-6 px-6 py-2.5 font-semibold text-muted-foreground bg-muted/20">
+              <div className="grid grid-cols-7 px-6 py-2.5 font-semibold text-muted-foreground bg-muted/20">
                 <div>Code</div>
                 <div className="col-span-2">Name / Email</div>
+                <div>Organization</div>
                 <div>Clinic Branch</div>
                 <div>Role / Dept</div>
                 <div className="text-right">Status</div>
               </div>
               {staffList.map((emp) => (
-                <div key={emp.id} className="grid grid-cols-6 px-6 py-3 items-center">
+                <div key={emp.id} className="grid grid-cols-7 px-6 py-3 items-center">
                   <div className="font-mono text-primary font-bold">{emp.employee_code}</div>
                   <div className="col-span-2">
                     <div className="font-semibold text-sm">{emp.user_name || emp.user?.first_name || "Staff Member"}</div>
                     <div className="text-xs text-muted-foreground">{emp.user_email || emp.user?.email || "no email"}</div>
                   </div>
+                  <div className="font-medium text-slate-300">{emp.organization_name || emp.organization?.name || "—"}</div>
                   <div className="font-medium text-slate-300">{emp.clinic_name || emp.clinic?.name || "Global Org"}</div>
                   <div>
                     <div>{emp.designation}</div>

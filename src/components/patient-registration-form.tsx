@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, ShieldAlert, Sparkles, Activity, FileText, CheckCircle2 } from "lucide-react";
-import { patientApi, schedulingApi, axiosInstance } from "@/lib/api";
+import { patientApi, schedulingApi, axiosInstance, organizationApi, clinicApi, departmentApi } from "@/lib/api";
+import { currentUser as defaultUser } from "@/lib/tenant-context";
 
 interface PatientRegistrationFormProps {
   onSuccess?: () => void;
@@ -17,6 +18,16 @@ const secureApi = axiosInstance;
 
 export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegistrationFormProps) {
   const [loading, setLoading] = useState(false);
+  const [activeUser, setActiveUser] = useState(() => {
+    const saved = localStorage.getItem("active_user");
+    return saved ? JSON.parse(saved) : defaultUser;
+  });
+  const [organizationsList, setOrganizationsList] = useState<any[]>([]);
+  const [clinicsList, setClinicsList] = useState<any[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<any[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState("");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
+  const [selectedDepartmentName, setSelectedDepartmentName] = useState("");
 
   // Form States
   // 1. Patient Name
@@ -63,21 +74,100 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [autoEnqueue, setAutoEnqueue] = useState(true);
 
-  // Load doctors list for assignment
   useEffect(() => {
+    const saved = localStorage.getItem("active_user");
+    if (saved) {
+      try {
+        setActiveUser(JSON.parse(saved));
+      } catch (e) {
+        setActiveUser(defaultUser);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadClinicContext = async () => {
+      try {
+        const [orgRes, clinicRes, deptRes] = await Promise.all([
+          organizationApi.getAll(),
+          clinicApi.getClinics(),
+          departmentApi.getDepartments(),
+        ]);
+
+        const organizationRows = orgRes || [];
+        const clinicRows = clinicRes || [];
+        const departmentRows = deptRes || [];
+        const filteredClinics = clinicRows.filter((c: any) => {
+          const orgValue = c.organization_id || c.organization || "";
+          return !activeUser.organization_id || !orgValue || String(orgValue) === String(activeUser.organization_id);
+        });
+
+        setOrganizationsList(organizationRows);
+        setClinicsList(filteredClinics);
+        setDepartmentsList(departmentRows);
+
+        const defaultClinicId = filteredClinics.find((c: any) => String(c.id) === String(activeUser.clinic_id) || String(c.code) === String(activeUser.clinic_id))?.id || filteredClinics[0]?.id || "";
+        setSelectedClinicId(defaultClinicId);
+      } catch (err) {
+        console.warn("Failed to fetch clinic context for registration form", err);
+      }
+    };
+
+    loadClinicContext();
+  }, [activeUser.organization_id, activeUser.clinic_id]);
+
+  useEffect(() => {
+    if (!selectedClinicId) {
+      setSelectedDepartmentId("");
+      setSelectedDepartmentName("");
+      setDoctorsList([]);
+      setSelectedDoctorId("");
+      return;
+    }
+
+    const matchedDepartments = departmentsList.filter((d: any) => {
+      const clinicValue = d.clinic_id || d.clinic || "";
+      return String(clinicValue) === String(selectedClinicId);
+    });
+
+    setDepartmentsList((prev) => prev); // keep state stable
+    const defaultDepartment = matchedDepartments[0];
+    const nextDepartmentId = defaultDepartment?.id || "";
+    const nextDepartmentName = defaultDepartment?.name || "";
+    setSelectedDepartmentId(nextDepartmentId);
+    setSelectedDepartmentName(nextDepartmentName);
+
+    if (!nextDepartmentId) {
+      setDoctorsList([]);
+      setSelectedDoctorId("");
+      return;
+    }
+
     const fetchDoctors = async () => {
       try {
-        const res = await axiosInstance.get("/doctors/");
-        setDoctorsList(res.data || []);
-        if (res.data && res.data.length > 0) {
-          setSelectedDoctorId(res.data[0].id);
+        const res = await axiosInstance.get("/appointments/available-doctors/", {
+          params: {
+            organization_id: activeUser.organization_id,
+            clinic_id: selectedClinicId,
+            department: nextDepartmentName,
+          },
+        });
+        const doctorRows = res.data?.doctors || res.data || [];
+        setDoctorsList(Array.isArray(doctorRows) ? doctorRows : []);
+        if (doctorRows.length > 0) {
+          setSelectedDoctorId(doctorRows[0].id);
+        } else {
+          setSelectedDoctorId("");
         }
       } catch (err) {
         console.warn("Failed to fetch doctors list in registration form", err);
+        setDoctorsList([]);
+        setSelectedDoctorId("");
       }
     };
+
     fetchDoctors();
-  }, []);
+  }, [selectedClinicId, departmentsList, activeUser.organization_id]);
 
   // Load initialData for edit mode
   useEffect(() => {
@@ -343,6 +433,66 @@ export function PatientRegistrationForm({ onSuccess, initialData }: PatientRegis
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-700">Organization</Label>
+              <select
+                value={activeUser.organization_id || ""}
+                onChange={() => {}}
+                className="w-full h-9 border border-slate-300 rounded-md px-2 text-xs bg-card font-medium"
+                disabled
+              >
+                {organizationsList.map((org: any) => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-700">Clinic Branch</Label>
+              <select
+                value={selectedClinicId}
+                onChange={(e) => setSelectedClinicId(e.target.value)}
+                className="w-full h-9 border border-slate-300 rounded-md px-2 text-xs bg-card font-medium"
+              >
+                {clinicsList.map((clinic: any) => (
+                  <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-700">Department</Label>
+              <select
+                value={selectedDepartmentId}
+                onChange={(e) => {
+                  const dept = departmentsList.find((d: any) => String(d.id) === String(e.target.value));
+                  setSelectedDepartmentId(e.target.value);
+                  setSelectedDepartmentName(dept?.name || "");
+                }}
+                className="w-full h-9 border border-slate-300 rounded-md px-2 text-xs bg-card font-medium"
+              >
+                {departmentsList.filter((d: any) => String(d.clinic_id || d.clinic) === String(selectedClinicId)).map((dept: any) => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-700">Assigned Doctor</Label>
+              <select
+                value={selectedDoctorId}
+                onChange={(e) => setSelectedDoctorId(e.target.value)}
+                className="w-full h-9 border border-slate-300 rounded-md px-2 text-xs bg-card font-medium"
+              >
+                {doctorsList.length === 0 ? (
+                  <option value="">No doctors available for this clinic/department</option>
+                ) : doctorsList.map((doctor: any) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.doctor_name || doctor.name || `${doctor.first_name || ""} ${doctor.last_name || ""}`.trim()}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* ABHA National Identification Verification Handshake */}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3.5">
             <div className="flex items-center justify-between">

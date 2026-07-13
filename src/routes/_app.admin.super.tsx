@@ -64,6 +64,10 @@ function SuperAdmin() {
     queryKey: ["clinics"],
     queryFn: clinicApi.getClinics,
   });
+  const employeesQuery = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => (await axiosInstance.get("/employees/")).data,
+  });
 
   const loadAdmins = () => {
     const saved = localStorage.getItem("mock_org_admins");
@@ -79,17 +83,7 @@ function SuperAdmin() {
   }, []);
 
   const allOrgs = useMemo(() => {
-    const dbOrgs = orgsData ?? [];
-    const mockStr = localStorage.getItem("mock_organizations");
-    const mockOrgs = mockStr ? JSON.parse(mockStr) : [];
-    
-    const merged = [...dbOrgs];
-    mockOrgs.forEach((mo: any) => {
-      if (!merged.some((doOrg: any) => doOrg.code === mo.code)) {
-        merged.push(mo);
-      }
-    });
-    return merged;
+    return orgsData ?? [];
   }, [orgsData]);
 
   const orgOptions = useMemo(() => {
@@ -97,24 +91,11 @@ function SuperAdmin() {
       label: o.name,
       value: o.name,
     }));
-    if (opts.length === 0) {
-      return [{ label: "Apollo Health Group", value: "Apollo Health Group" }];
-    }
     return opts;
   }, [allOrgs]);
 
   const allClinics = useMemo(() => {
-    const list = clinicsQuery.data ?? [];
-    const mockStr = localStorage.getItem("mock_clinics");
-    const mockClinics = mockStr ? JSON.parse(mockStr) : [];
-    
-    const merged = [...list];
-    mockClinics.forEach((mc: any) => {
-      if (!merged.some((dc: any) => dc.code === mc.code)) {
-        merged.push(mc);
-      }
-    });
-    return merged;
+    return clinicsQuery.data ?? [];
   }, [clinicsQuery.data]);
 
   const clinicOptions = useMemo(() => {
@@ -324,10 +305,10 @@ function SuperAdmin() {
       }}
       subtitle="Platform-wide control plane for 500+ healthcare organizations, revenue, subscriptions, AI usage, white-label partners and audit."
       stats={[
-        { label: "Organizations", value: "512", hint: "+18 this quarter" },
-        { label: "Active clinics", value: "4,820" },
-        { label: "Platform MRR", value: "₹38.4 Cr" },
-        { label: "AI tokens (30d)", value: "812 M" },
+        { label: "Organizations", value: String(allOrgs.length) },
+        { label: "Active clinics", value: String(allClinics.filter((clinic: any) => clinic.status === "ACTIVE").length) },
+        { label: "Clinic staff", value: String((employeesQuery.data ?? []).length) },
+        { label: "Organization admins", value: String((employeesQuery.data ?? []).filter((employee: any) => employee.designation?.toLowerCase().includes("organization admin")).length) },
       ]}
       sections={[
         {

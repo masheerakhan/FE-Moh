@@ -18,19 +18,13 @@ function OrganizationPage() {
     queryKey: ["clinics"],
     queryFn: clinicApi.getClinics,
   });
+  const { data: dbEmployees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => (await axiosInstance.get("/employees/")).data,
+  });
 
   const allClinics = useMemo(() => {
-    const list = dbClinics ?? [];
-    const mockStr = localStorage.getItem("mock_clinics");
-    const mockClinics = mockStr ? JSON.parse(mockStr) : [];
-    
-    const merged = [...list];
-    mockClinics.forEach((mc: any) => {
-      if (!merged.some((dc: any) => dc.code === mc.code)) {
-        merged.push(mc);
-      }
-    });
-    return merged;
+    return dbClinics ?? [];
   }, [dbClinics]);
 
   const clinicOptions = useMemo(() => {
@@ -38,22 +32,10 @@ function OrganizationPage() {
       label: c.name,
       value: c.id || c.code,
     }));
-    if (opts.length === 0) {
-      return [{ label: "Apollo Bandra Clinic", value: "clinic_bandra" }];
-    }
     return opts;
   }, [allClinics]);
 
   const handleAddDepartment = async (v: Record<string, string>) => {
-    const newDep = {
-      id: `dep_mock_${Date.now()}`,
-      name: v.name,
-      code: v.code,
-      clinic: v.clinic,
-      description: v.description,
-      status: "ACTIVE" as const,
-    };
-
     try {
       await departmentApi.createDepartment({
         name: v.name,
@@ -65,25 +47,7 @@ function OrganizationPage() {
       toast.success(`Department "${v.name}" created successfully.`);
       queryClient.invalidateQueries({ queryKey: ["departments"] });
     } catch (err: any) {
-      console.warn("Backend department creation failed, simulating success on frontend", err);
-      toast.success(`Department "${v.name}" created successfully (Mock Sandbox fallback).`);
-
-      // Persist the new department to local storage
-      const mockStr = localStorage.getItem("mock_departments");
-      const mockDeps = mockStr ? JSON.parse(mockStr) : [];
-      if (!mockDeps.some((d: any) => d.code === v.code && d.clinic === v.clinic)) {
-        mockDeps.push(newDep);
-        localStorage.setItem("mock_departments", JSON.stringify(mockDeps));
-      }
-
-      // Manually append the new department to the local React Query cache
-      queryClient.setQueryData(["departments"], (old: any) => {
-        const list = Array.isArray(old) ? old : [];
-        if (list.some((d: any) => d.code === v.code && d.clinic === v.clinic)) {
-          return list;
-        }
-        return [...list, newDep];
-      });
+      toast.error("Department creation failed", { description: err.response?.data?.detail || err.message });
     }
   };
 
@@ -150,43 +114,17 @@ function OrganizationPage() {
           toast.success(`Clinic "${clinicName}" and Clinic Admin onboarded successfully.`);
           queryClient.invalidateQueries({ queryKey: ["clinics"] });
         } catch (err: any) {
-          console.warn("Backend clinic onboarding failed, fallback to simulated execution", err);
-          
-          const newClinic = {
-            id: `clinic_mock_${Date.now()}`,
-            name: clinicName,
-            code: clinicCode,
-            phone: v.phone,
-            status: "ACTIVE" as const,
-          };
-
-          // Save to local storage mock databases
-          const mockStr = localStorage.getItem("mock_clinics");
-          const mockClinics = mockStr ? JSON.parse(mockStr) : [];
-          mockClinics.push(newClinic);
-          localStorage.setItem("mock_clinics", JSON.stringify(mockClinics));
-
-          const mockAdmins = localStorage.getItem("mock_clinic_admins") || "[]";
-          const parsedAdmins = JSON.parse(mockAdmins);
-          parsedAdmins.push({ name: adminName, email: adminEmail, clinic: clinicName });
-          localStorage.setItem("mock_clinic_admins", JSON.stringify(parsedAdmins));
-
-          toast.success(`Clinic and Admin created successfully (Mock Sandbox fallback).`);
-          
-          // Manually append the new clinic to the local React Query cache
-          queryClient.setQueryData(["clinics"], (old: any) => {
-            const list = Array.isArray(old) ? old : [];
-            if (list.some((c: any) => c.code === clinicCode)) return list;
-            return [...list, newClinic];
+          toast.error("Clinic and administrator creation failed", {
+            description: err.response?.data?.detail || err.response?.data?.message || err.message,
           });
         }
       }}
       subtitle="Operate a multi-clinic hospital chain — doctors, staff, branding, domains and revenue across all branches."
       stats={[
-        { label: "Clinics in org", value: "38" },
-        { label: "Doctors", value: "612" },
-        { label: "Staff", value: "1,840" },
-        { label: "Org revenue (MTD)", value: "₹6.2 Cr" },
+        { label: "Clinics in org", value: String(allClinics.length) },
+        { label: "Doctors", value: String(dbEmployees.filter((employee: any) => employee.is_doctor).length) },
+        { label: "Staff", value: String(dbEmployees.length) },
+        { label: "Active staff", value: String(dbEmployees.filter((employee: any) => employee.is_active_employee).length) },
       ]}
       sections={[
         {
